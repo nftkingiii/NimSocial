@@ -41,6 +41,11 @@ describe("NimSocial API", () => {
 
   it("reports health", async () => { const response=await app.inject({method:"GET",url:"/healthz"}); expect(response.statusCode).toBe(200); expect(response.json().status).toBe("ok"); });
 
+  it("rejects a malformed Nimiq address without an internal error", async () => {
+    const response=await app.inject({method:"POST",url:"/v1/auth/challenges",payload:{walletAddress:"X".repeat(32)}});
+    expect(response.statusCode).toBe(400);
+  });
+
   it("authenticates a valid Nimiq message and rejects challenge replay", async () => {
     const keyPair=KeyPair.generate(); const walletAddress=keyPair.toAddress().toUserFriendlyAddress();
     const challenge=(await app.inject({method:"POST",url:"/v1/auth/challenges",payload:{walletAddress}})).json();

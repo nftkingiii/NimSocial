@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Address } from "@nimiq/core";
 
 const optionalAddress = z.preprocess((value) => value === "" ? undefined : value, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional());
 
@@ -12,7 +13,7 @@ const schema = z.object({
   CHALLENGE_TTL_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
   NIMIQ_RPC_URL: z.string().url(),
   NIMIQ_NETWORK: z.enum(["mainnet", "testnet"]).default("testnet"),
-  NIMIQ_POST_TREASURY: z.string().min(1),
+  NIMIQ_POST_TREASURY: z.string().refine((value) => { try { Address.fromString(value); return true; } catch { return false; } }, "Invalid Nimiq treasury address"),
   NIMIQ_POST_FEE_LUNA: z.coerce.bigint().nonnegative().default(10_000n),
   NIMIQ_UPDATE_FEE_LUNA: z.coerce.bigint().nonnegative().default(1_000n),
   POLYGON_CHAIN_ID: z.coerce.number().int().positive().default(80002),

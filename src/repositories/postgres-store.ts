@@ -47,7 +47,7 @@ export class PostgresStore implements Store {
       await client.query("BEGIN");
       const a=await client.query("SELECT * FROM applications WHERE id=$1 AND job_id=$2 AND status='pending' FOR UPDATE",[applicationId,jobId]);
       if (!a.rows[0]) { await client.query("ROLLBACK"); return null; }
-      const j=await client.query("UPDATE jobs SET worker_wallet=$3,state='funding',updated_at=NOW() WHERE id=$1 AND state='open' RETURNING *",[jobId,applicationId,a.rows[0].applicant_wallet]);
+      const j=await client.query("UPDATE jobs SET worker_wallet=$2,state='funding',updated_at=NOW() WHERE id=$1 AND state='open' RETURNING *",[jobId,a.rows[0].applicant_wallet]);
       if (!j.rows[0]) { await client.query("ROLLBACK"); return null; }
       await client.query("UPDATE applications SET status=CASE WHEN id=$2 THEN 'accepted' ELSE 'rejected' END WHERE job_id=$1",[jobId,applicationId]);
       await client.query("COMMIT");

@@ -14,8 +14,7 @@ contract NimSocialEscrow is ReentrancyGuard {
         Submitted,
         Disputed,
         Released,
-        Refunded,
-        Cancelled
+        Refunded
     }
 
     struct Job {
@@ -24,6 +23,7 @@ contract NimSocialEscrow is ReentrancyGuard {
         address arbiter;
         uint128 amount;
         uint64 deadline;
+        uint64 submittedAt;
         State state;
         bytes32 evidenceHash;
     }
@@ -38,8 +38,18 @@ contract NimSocialEscrow is ReentrancyGuard {
     error InvalidState(State expected, State actual);
     error NotAuthorized();
     error DeadlineNotReached();
+    error ReviewPeriodNotReached();
 
-    event JobFunded(bytes32 indexed jobId, address indexed client, address indexed worker, uint256 amount, uint64 deadline, address arbiter);
+    uint64 public constant REVIEW_PERIOD = 3 days;
+
+    event JobFunded(
+        bytes32 indexed jobId,
+        address indexed client,
+        address indexed worker,
+        uint256 amount,
+        uint64 deadline,
+        address arbiter
+    );
     event EvidenceSubmitted(bytes32 indexed jobId, bytes32 indexed evidenceHash);
     event DisputeOpened(bytes32 indexed jobId, address indexed openedBy);
     event JobReleased(bytes32 indexed jobId, address indexed worker, uint256 amount);
@@ -50,11 +60,14 @@ contract NimSocialEscrow is ReentrancyGuard {
         paymentToken = token;
     }
 
-    function fundJob(bytes32 jobId, address worker, address arbiter, uint128 amount, uint64 deadline) external nonReentrant {
+    function fundJob(bytes32 jobId, address worker, address arbiter, uint128 amount, uint64 deadline)
+        external
+        nonReentrant
+    {
         if (jobs[jobId].state != State.None) revert AlreadyExists();
         if (
-            worker == address(0) || arbiter == address(0) || worker == msg.sender ||
-            arbiter == msg.sender || arbiter == worker
+            worker == address(0) || arbiter == address(0) || worker == msg.sender || arbiter == msg.sender
+                || arbiter == worker
         ) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
         if (deadline <= block.timestamp) revert InvalidDeadline();
@@ -65,6 +78,7 @@ contract NimSocialEscrow is ReentrancyGuard {
             arbiter: arbiter,
             amount: amount,
             deadline: deadline,
+            submittedAt: 0,
             state: State.Funded,
             evidenceHash: bytes32(0)
         });
@@ -80,6 +94,7 @@ contract NimSocialEscrow is ReentrancyGuard {
         if (block.timestamp > job.deadline) revert InvalidDeadline();
         if (evidenceHash == bytes32(0)) revert InvalidAmount();
         job.evidenceHash = evidenceHash;
+        job.submittedAt = uint64(block.timestamp);
         job.state = State.Submitted;
         emit EvidenceSubmitted(jobId, evidenceHash);
     }
@@ -99,6 +114,16 @@ contract NimSocialEscrow is ReentrancyGuard {
         if (job.state != State.Submitted) revert InvalidState(State.Submitted, job.state);
         job.state = State.Disputed;
         emit DisputeOpened(jobId, msg.sender);
+    }
+
+    function claimAfterReviewPeriod(bytes32 jobId) external nonReentrant {
+        Job storage job = jobs[jobId];
+        if (msg.sender != job.worker) revert NotAuthorized();
+        if (job.state != State.Submitted) revert InvalidState(State.Submitted, job.state);
+        if (block.timestamp <= job.submittedAt + REVIEW_PERIOD) revert ReviewPeriodNotReached();
+        job.state = State.Released;
+        paymentToken.safeTransfer(job.worker, job.amount);
+        emit JobReleased(jobId, job.worker, job.amount);
     }
 
     function resolveDispute(bytes32 jobId, bool releaseToWorker) external nonReentrant {

@@ -87,7 +87,6 @@ contract NimSocialEscrowTest {
         escrow.resolveDispute(jobId, true);
     }
 
-
     function testWorkerCannotSubmitAfterDeadline() public {
         _fund();
         vm.warp(block.timestamp + 8 days);
@@ -107,5 +106,20 @@ contract NimSocialEscrowTest {
         vm.prank(client);
         vm.expectRevert(NimSocialEscrow.InvalidAddress.selector);
         escrow.fundJob(jobId, worker, worker, AMOUNT, uint64(block.timestamp + 7 days));
+    }
+
+    function testWorkerCanClaimAfterClientReviewTimeout() public {
+        _fund();
+        vm.prank(worker);
+        escrow.submitEvidence(jobId, keccak256("complete-proof"));
+
+        vm.prank(worker);
+        vm.expectRevert(NimSocialEscrow.ReviewPeriodNotReached.selector);
+        escrow.claimAfterReviewPeriod(jobId);
+
+        vm.warp(block.timestamp + escrow.REVIEW_PERIOD() + 1);
+        vm.prank(worker);
+        escrow.claimAfterReviewPeriod(jobId);
+        assertEq(token.balanceOf(worker), AMOUNT);
     }
 }

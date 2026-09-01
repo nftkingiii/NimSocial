@@ -34,6 +34,7 @@ export class NimiqRpcPaymentVerifier implements PaymentVerifier {
     if (!payload.result || payload.error) throw new Error("Transaction was not found");
 
     const tx = payload.result;
+    if (tx.hash && tx.hash.toLowerCase() !== input.txHash.toLowerCase()) throw new Error("Transaction hash mismatch");
     const sender = tx.from ?? tx.sender ?? "";
     const recipient = tx.to ?? tx.recipient ?? "";
     const valueLuna = BigInt(tx.value ?? 0);

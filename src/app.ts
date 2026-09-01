@@ -18,7 +18,7 @@ const sessionSchema = z.object({
   signature: z.string().regex(/^[a-fA-F0-9]{128}$/),
 });
 const postSchema = z.object({ kind: z.enum(["request","service","update","proof"]), body: z.string().trim().min(1).max(2000), jobId: z.string().min(8).max(64).optional() });
-const publishSchema = z.object({ txHash: z.string().min(32).max(128) });
+const publishSchema = z.object({ txHash: z.string().regex(/^[a-fA-F0-9]{64}$/) });
 const jobSchema = z.object({ title: z.string().trim().min(3).max(120), description: z.string().trim().min(10).max(5000), budgetUsdtMicros: z.string().regex(/^\d{1,18}$/), deadline: z.coerce.date() });
 const applicationSchema = z.object({ message: z.string().trim().min(3).max(2000) });
 const messageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
@@ -66,7 +66,7 @@ export async function buildApp(deps: AppDependencies) {
 
   app.post("/v1/auth/challenges", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const { walletAddress: rawAddress } = challengeSchema.parse(request.body);
-    const walletAddress = normalizeNimiqAddress(rawAddress);
+    const walletAddress = parseNimiqAddress(rawAddress);
     const nonce = randomToken(24);
     const challengeId = nanoid();
     const expiresAt = new Date(now().getTime() + deps.config.CHALLENGE_TTL_SECONDS * 1000);
@@ -77,7 +77,7 @@ export async function buildApp(deps: AppDependencies) {
 
   app.post("/v1/auth/sessions", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const input = sessionSchema.parse(request.body);
-    const walletAddress = normalizeNimiqAddress(input.walletAddress);
+    const walletAddress = parseNimiqAddress(input.walletAddress);
     const challenge = await deps.store.consumeChallenge(input.challengeId, sha256Hex(input.nonce), now());
     if (!challenge || challenge.walletAddress !== walletAddress) throw httpError(401, "Challenge is invalid or expired");
     if (!verifyNimiqMessage({ walletAddress, publicKeyHex: input.publicKey, signatureHex: input.signature, message: challenge.message })) throw httpError(401, "Signature is invalid");
@@ -179,3 +179,4 @@ function publicPost(post: Post) { return {...post,requiredLuna:post.requiredLuna
 function publicJob(job: Job) { return {...job,budgetUsdtMicros:job.budgetUsdtMicros.toString(),deadline:job.deadline.toISOString(),createdAt:job.createdAt.toISOString()}; }
 async function assertJobParty(store:Store,id:string,wallet:string) { const job=await store.findJob(id); if(!job) throw httpError(404,"Job not found"); if(job.clientWallet!==wallet&&job.workerWallet!==wallet) throw httpError(403,"Only job participants can access messages"); }
 function httpError(statusCode:number,message:string) { return Object.assign(new Error(message),{statusCode}); }
+function parseNimiqAddress(value:string) { try { return normalizeNimiqAddress(value); } catch { throw httpError(400,"Invalid Nimiq address"); } }
