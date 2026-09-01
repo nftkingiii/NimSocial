@@ -15,18 +15,19 @@ function relativeTime(value: string | null) {
 
 type Action = "comment" | "repost" | "appreciate" | "save";
 
-export function PostCard({ post, onOpenProfile, onViewJob, onOpenThread, onAction, detail = false }: { post: FeedPost; onOpenProfile?: (walletAddress:string)=>void; onViewJob?: (jobId:string)=>void; onOpenThread?: (post:FeedPost)=>void; onAction?: (action:Action, post:FeedPost, detail?:string)=>void; detail?:boolean }) {
+export function PostCard({ post, onOpenProfile, onViewJob, onOpenThread, onAction, detail = false, commentCount: controlledCommentCount }: { post: FeedPost; onOpenProfile?: (walletAddress:string)=>void; onViewJob?: (jobId:string)=>void; onOpenThread?: (post:FeedPost)=>void; onAction?: (action:Action, post:FeedPost, detail?:string)=>void; detail?:boolean; commentCount?:number }) {
   const name = post.authorName ?? post.authorWallet;
   const [commenting,setCommenting]=useState(false);
   const [comment,setComment]=useState("");
-  const [commentCount,setCommentCount]=useState(post.preview ? post.kind === "request" ? 8 : 3 : 0);
+  const [localCommentCount,setLocalCommentCount]=useState(post.preview ? 2 : 0);
+  const commentCount=controlledCommentCount??localCommentCount;
   const [reposted,setReposted]=useState(false);
   const [appreciated,setAppreciated]=useState(false);
   const [saved,setSaved]=useState(false);
   const repostBase=post.preview ? post.kind === "proof" ? 5 : 2 : 0;
   const appreciationBase=post.preview ? post.kind === "service" ? 24 : 12 : 0;
   const toggle=(action:Exclude<Action,"comment">,active:boolean,setActive:(value:boolean)=>void)=>{setActive(!active);onAction?.(action,post);};
-  const submitComment=(event:React.FormEvent)=>{event.preventDefault();const value=comment.trim();if(!value)return;setCommentCount((count)=>count+1);setComment("");setCommenting(false);onAction?.("comment",post,value);};
+  const submitComment=(event:React.FormEvent)=>{event.preventDefault();const value=comment.trim();if(!value)return;setLocalCommentCount((count)=>count+1);setComment("");setCommenting(false);onAction?.("comment",post,value);};
   const openFromCard=(event:React.MouseEvent<HTMLElement>)=>{if(!onOpenThread||detail||(event.target as HTMLElement).closest("button, a, input, form"))return;onOpenThread(post);};
   return (
     <article className={`post-card ${onOpenThread&&!detail?"post-card--openable":""} ${detail?"post-card--detail":""}`} onClick={openFromCard}>
