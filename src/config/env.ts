@@ -20,6 +20,7 @@ const schema = z.object({
   POLYGON_RPC_URL: z.string().url(),
   ESCROW_CONTRACT_ADDRESS: optionalAddress,
   USDT_CONTRACT_ADDRESS: optionalAddress,
+  REVISION: z.string().max(80).default("local"),
 });
 
 export type AppConfig = z.infer<typeof schema> & { allowedOrigins: Set<string> };

@@ -17,7 +17,7 @@ const config: AppConfig = {
   NODE_ENV:"test",PORT:3000,HOST:"127.0.0.1",DATABASE_URL:"postgres://unused",ALLOWED_ORIGINS:"http://localhost:5173",
   SESSION_TTL_SECONDS:3600,CHALLENGE_TTL_SECONDS:300,NIMIQ_RPC_URL:"https://rpc.invalid",NIMIQ_NETWORK:"testnet",
   NIMIQ_POST_TREASURY:"NQ07 EXAMPLE TREASURY",NIMIQ_POST_FEE_LUNA:10_000n,NIMIQ_UPDATE_FEE_LUNA:1_000n,
-  POLYGON_CHAIN_ID:80002,POLYGON_RPC_URL:"https://polygon.invalid",allowedOrigins:new Set(["http://localhost:5173"]),
+  POLYGON_CHAIN_ID:80002,POLYGON_RPC_URL:"https://polygon.invalid",REVISION:"test",allowedOrigins:new Set(["http://localhost:5173"]),
 };
 
 describe("NimSocial API", () => {

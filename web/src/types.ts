@@ -18,6 +18,16 @@ export interface FeedPost {
   preview?: boolean;
 }
 
+export interface PostReply {
+  id: string;
+  postId: string;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt: string;
+  preview?: boolean;
+}
+
 export interface PaymentIntent {
   post: FeedPost;
   payment: { recipient: string; valueLuna: string; data: string };
@@ -73,4 +83,4 @@ export interface ProfileInput {
   location:string;
 }
 
-export type AppSection = "feed" | "explore" | "post" | "jobs" | "wallet" | "notifications" | "profile";
+export type AppSection = "feed" | "thread" | "explore" | "post" | "jobs" | "wallet" | "notifications" | "profile";

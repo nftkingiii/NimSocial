@@ -71,7 +71,7 @@ export async function buildApp(deps: AppDependencies) {
     return session.walletAddress;
   }
 
-  app.get("/healthz", async () => ({ status: "ok", service: "nimsocial-api" }));
+  app.get("/healthz", async () => ({ status: "ok", service: "nimsocial-api", revision: deps.config.REVISION }));
   app.get("/v1/config", async () => ({
     nimiq: { network: deps.config.NIMIQ_NETWORK, treasury: deps.config.NIMIQ_POST_TREASURY, postFeeLuna: deps.config.NIMIQ_POST_FEE_LUNA.toString(), updateFeeLuna: deps.config.NIMIQ_UPDATE_FEE_LUNA.toString() },
     escrow: { chainId: deps.config.POLYGON_CHAIN_ID, contractAddress: deps.config.ESCROW_CONTRACT_ADDRESS ?? null, tokenAddress: deps.config.USDT_CONTRACT_ADDRESS ?? null, deployed: Boolean(deps.config.ESCROW_CONTRACT_ADDRESS && deps.config.USDT_CONTRACT_ADDRESS) },
