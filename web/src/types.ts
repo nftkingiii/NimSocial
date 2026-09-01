@@ -73,4 +73,4 @@ export interface ProfileInput {
   location:string;
 }
 
-export type AppSection = "feed" | "explore" | "post" | "jobs" | "profile";
+export type AppSection = "feed" | "explore" | "post" | "jobs" | "wallet" | "notifications" | "profile";
