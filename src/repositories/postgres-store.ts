@@ -1,5 +1,5 @@
 import type { Pool, PoolClient, QueryResultRow } from "pg";
-import type { Application, Challenge, Job, JobMessage, Post, Session, User } from "../domain/models.js";
+import type { Application, Challenge, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
 import type { Store } from "../ports/store.js";
 
 export class PostgresStore implements Store {
@@ -15,6 +15,16 @@ export class PostgresStore implements Store {
   async upsertUser(u: User) {
     await this.pool.query("INSERT INTO users(wallet_address,public_key) VALUES($1,$2) ON CONFLICT(wallet_address) DO UPDATE SET public_key=EXCLUDED.public_key, updated_at=NOW()", [u.walletAddress,u.publicKey]);
   }
+  async findUser(walletAddress:string) { const r=await this.pool.query("SELECT * FROM users WHERE wallet_address=$1",[walletAddress]); return r.rows[0]?userFrom(r.rows[0]):null; }
+  async updateUserProfile(walletAddress:string,profile:Pick<User,"displayName"|"bio"|"profileRole"|"professionalTitle"|"skills"|"availability"|"workPreference"|"location"|"onboardingCompletedAt">) {
+    const r=await this.pool.query("UPDATE users SET display_name=$2,bio=$3,profile_role=$4,professional_title=$5,skills=$6::jsonb,availability=$7,work_preference=$8,location=$9,onboarding_completed_at=$10,updated_at=NOW() WHERE wallet_address=$1 RETURNING *",[walletAddress,profile.displayName,profile.bio,profile.profileRole,profile.professionalTitle,JSON.stringify(profile.skills),profile.availability,profile.workPreference,profile.location,profile.onboardingCompletedAt]);
+    return r.rows[0]?userFrom(r.rows[0]):null;
+  }
+  async listProfiles(limit:number) { const r=await this.pool.query("SELECT * FROM users WHERE onboarding_completed_at IS NOT NULL ORDER BY updated_at DESC LIMIT $1",[limit]); return r.rows.map(userFrom); }
+  async follow(followerWallet:string,followedWallet:string) { await this.pool.query("INSERT INTO follows(follower_wallet,followed_wallet) VALUES($1,$2) ON CONFLICT DO NOTHING",[followerWallet,followedWallet]); }
+  async unfollow(followerWallet:string,followedWallet:string) { await this.pool.query("DELETE FROM follows WHERE follower_wallet=$1 AND followed_wallet=$2",[followerWallet,followedWallet]); }
+  async isFollowing(followerWallet:string,followedWallet:string) { const r=await this.pool.query("SELECT 1 FROM follows WHERE follower_wallet=$1 AND followed_wallet=$2",[followerWallet,followedWallet]); return Boolean(r.rows[0]); }
+  async countFollowers(walletAddress:string) { const r=await this.pool.query("SELECT COUNT(*) FILTER (WHERE followed_wallet=$1)::int AS followers,COUNT(*) FILTER (WHERE follower_wallet=$1)::int AS following FROM follows WHERE followed_wallet=$1 OR follower_wallet=$1",[walletAddress]); return {followers:r.rows[0]?.followers??0,following:r.rows[0]?.following??0}; }
   async createSession(s: Session) {
     await this.pool.query("INSERT INTO sessions(id,wallet_address,token_hash,expires_at) VALUES($1,$2,$3,$4)", [s.id,s.walletAddress,s.tokenHash,s.expiresAt]);
   }
@@ -35,6 +45,7 @@ export class PostgresStore implements Store {
     const r=await this.pool.query("SELECT * FROM posts WHERE state='published' AND ($1::timestamptz IS NULL OR published_at<$1) ORDER BY published_at DESC,id DESC LIMIT $2",[cursor,limit]);
     return r.rows.map(postFrom);
   }
+  async listPostsByAuthor(walletAddress:string,limit:number) { const r=await this.pool.query("SELECT * FROM posts WHERE author_wallet=$1 AND state='published' ORDER BY published_at DESC,id DESC LIMIT $2",[walletAddress,limit]); return r.rows.map(postFrom); }
   async createJob(j: Job) {
     await this.pool.query("INSERT INTO jobs(id,client_wallet,title,description,budget_usdt_micros,deadline,state,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",[j.id,j.clientWallet,j.title,j.description,j.budgetUsdtMicros.toString(),j.deadline,j.state,j.createdAt]);
   }
@@ -56,6 +67,8 @@ export class PostgresStore implements Store {
   }
   async createMessage(m: JobMessage) { await this.pool.query("INSERT INTO job_messages(id,job_id,sender_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",[m.id,m.jobId,m.senderWallet,m.body,m.createdAt]); }
   async listMessages(jobId: string) { const r=await this.pool.query("SELECT * FROM job_messages WHERE job_id=$1 ORDER BY created_at ASC,id ASC",[jobId]); return r.rows.map(messageFrom); }
+  async createReview(review:Review) { await this.pool.query("INSERT INTO reviews(id,job_id,reviewer_wallet,subject_wallet,quality,delivery,communication,reliability,body,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",[review.id,review.jobId,review.reviewerWallet,review.subjectWallet,review.quality,review.delivery,review.communication,review.reliability,review.body,review.createdAt]); }
+  async listReviewsForUser(walletAddress:string) { const r=await this.pool.query("SELECT * FROM reviews WHERE subject_wallet=$1 ORDER BY created_at DESC",[walletAddress]); return r.rows.map(reviewFrom); }
 }
 
 async function rollback(client: PoolClient) { try { await client.query("ROLLBACK"); } catch { /* preserve original error */ } }
@@ -65,3 +78,5 @@ function postFrom(r: QueryResultRow): Post { return {id:r.id,authorWallet:r.auth
 function jobFrom(r: QueryResultRow): Job { return {id:r.id,clientWallet:r.client_wallet,workerWallet:r.worker_wallet,title:r.title,description:r.description,budgetUsdtMicros:BigInt(r.budget_usdt_micros),deadline:new Date(r.deadline),arbiterAddress:r.arbiter_address,escrowJobId:r.escrow_job_id,escrowTxHash:r.escrow_tx_hash,state:r.state,createdAt:new Date(r.created_at)}; }
 function applicationFrom(r: QueryResultRow): Application { return {id:r.id,jobId:r.job_id,applicantWallet:r.applicant_wallet,message:r.message,status:r.status,createdAt:new Date(r.created_at)}; }
 function messageFrom(r: QueryResultRow): JobMessage { return {id:r.id,jobId:r.job_id,senderWallet:r.sender_wallet,body:r.body,createdAt:new Date(r.created_at)}; }
+function userFrom(r:QueryResultRow):User { return {walletAddress:r.wallet_address,publicKey:r.public_key,displayName:r.display_name,bio:r.bio,profileRole:r.profile_role,professionalTitle:r.professional_title,skills:Array.isArray(r.skills)?r.skills:[],availability:r.availability??"not_open",workPreference:r.work_preference,location:r.location,onboardingCompletedAt:r.onboarding_completed_at?new Date(r.onboarding_completed_at):null,createdAt:new Date(r.created_at)}; }
+function reviewFrom(r:QueryResultRow):Review { return {id:r.id,jobId:r.job_id,reviewerWallet:r.reviewer_wallet,subjectWallet:r.subject_wallet,quality:r.quality,delivery:r.delivery,communication:r.communication,reliability:r.reliability,body:r.body,createdAt:new Date(r.created_at)}; }

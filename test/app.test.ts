@@ -96,4 +96,32 @@ describe("NimSocial API", () => {
     expect((await app.inject({method:"POST",url:`/v1/jobs/${job.id}/messages`,headers:auth(worker.token),payload:{body:"First draft attached"}})).statusCode).toBe(201);
     expect((await app.inject({method:"GET",url:`/v1/jobs/${job.id}/messages`,headers:auth(stranger.token)})).statusCode).toBe(403);
   });
+
+  it("creates a discoverable role-based profile with bounded preferences", async () => {
+    const user=await login(); const headers={authorization:`Bearer ${user.token}`};
+    const updated=await app.inject({method:"PATCH",url:"/v1/me/profile",headers,payload:{displayName:"Tomi Ade",bio:"I build wallet-native interfaces.",profileRole:"worker",professionalTitle:"Frontend engineer",skills:["React","Nimiq","react"],availability:"open",workPreference:"remote",location:"Lagos"}});
+    expect(updated.statusCode).toBe(200); expect(updated.json().profile.skills).toEqual(["react","nimiq"]); expect(updated.json().profile.reputation.score).toBeNull();
+    const discovery=await app.inject({method:"GET",url:"/v1/profiles?availability=open&skill=react"}); expect(discovery.statusCode).toBe(200); expect(discovery.json().items).toHaveLength(1);
+    const invalid=await app.inject({method:"PATCH",url:"/v1/me/profile",headers,payload:{displayName:"X",profileRole:"worker",professionalTitle:"Dev",skills:[],availability:"open",workPreference:"remote"}}); expect(invalid.statusCode).toBe(400);
+  });
+
+  it("supports following without allowing self-follows", async () => {
+    const one=await login(); const two=await login(); const auth={authorization:`Bearer ${one.token}`};
+    expect((await app.inject({method:"POST",url:`/v1/profiles/${two.walletAddress}/follow`,headers:auth})).statusCode).toBe(204);
+    await store.updateUserProfile(two.walletAddress,{displayName:"Worker",bio:null,profileRole:"worker",professionalTitle:"Designer",skills:["design"],availability:"open",workPreference:"remote",location:null,onboardingCompletedAt:new Date()});
+    const profile=await app.inject({method:"GET",url:`/v1/profiles/${two.walletAddress}`}); expect(profile.json().profile.followers).toBe(1);
+    expect((await app.inject({method:"POST",url:`/v1/profiles/${one.walletAddress}/follow`,headers:auth})).statusCode).toBe(400);
+  });
+
+  it("derives reputation only from a settled job review", async () => {
+    const client=await login(); const worker=await login(); const auth=(token:string)=>({authorization:`Bearer ${token}`});
+    const job=(await app.inject({method:"POST",url:"/v1/jobs",headers:auth(client.token),payload:{title:"Design a flow",description:"Design the complete onboarding workflow",budgetUsdtMicros:"500000000",deadline:"2030-01-01T00:00:00.000Z"}})).json().job;
+    const application=(await app.inject({method:"POST",url:`/v1/jobs/${job.id}/applications`,headers:auth(worker.token),payload:{message:"Ready to design it"}})).json().application;
+    await app.inject({method:"POST",url:`/v1/jobs/${job.id}/applications/${application.id}/accept`,headers:auth(client.token)});
+    const before=await app.inject({method:"POST",url:`/v1/jobs/${job.id}/reviews`,headers:auth(client.token),payload:{quality:5,delivery:5,communication:4,reliability:5}}); expect(before.statusCode).toBe(409);
+    store.jobs.get(job.id)!.state="settled";
+    expect((await app.inject({method:"POST",url:`/v1/jobs/${job.id}/reviews`,headers:auth(client.token),payload:{quality:5,delivery:5,communication:4,reliability:5,body:"Clear delivery"}})).statusCode).toBe(201);
+    await store.updateUserProfile(worker.walletAddress,{displayName:"Worker",bio:null,profileRole:"worker",professionalTitle:"Designer",skills:["design"],availability:"open",workPreference:"remote",location:null,onboardingCompletedAt:new Date()});
+    const profile=await app.inject({method:"GET",url:`/v1/profiles/${worker.walletAddress}`}); expect(profile.json().profile.reputation).toMatchObject({score:95,reviewCount:1,confidence:20});
+  });
 });

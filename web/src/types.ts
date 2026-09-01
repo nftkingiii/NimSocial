@@ -28,4 +28,49 @@ export interface WalletIdentity {
   shortAddress: string;
 }
 
+export type ProfileRole = "worker" | "client" | "both";
+export type Availability = "open" | "busy" | "not_open";
+export type WorkPreference = "remote" | "hybrid" | "onsite" | "flexible";
+
+export interface ReputationSummary {
+  score: number | null;
+  reviewCount: number;
+  confidence: number;
+  dimensions: { quality:number|null; delivery:number|null; communication:number|null; reliability:number|null };
+  credentialTxHash: string | null;
+}
+
+export interface ProfessionalProfile {
+  walletAddress: string;
+  displayName: string | null;
+  bio: string | null;
+  profileRole: ProfileRole | null;
+  professionalTitle: string | null;
+  skills: string[];
+  availability: Availability;
+  workPreference: WorkPreference | null;
+  location: string | null;
+  onboardingCompletedAt: string | null;
+  createdAt: string;
+  followers: number;
+  following: number;
+  isFollowing: boolean;
+  reputation: ReputationSummary;
+  preview?: boolean;
+  completedJobs?: number;
+  earned?: string;
+  workSamples?: Array<{title:string;outcome:string;skills:string[]}>;
+}
+
+export interface ProfileInput {
+  displayName:string;
+  bio:string;
+  profileRole:ProfileRole;
+  professionalTitle:string;
+  skills:string[];
+  availability:Availability;
+  workPreference:WorkPreference;
+  location:string;
+}
+
 export type AppSection = "feed" | "explore" | "post" | "jobs" | "profile";

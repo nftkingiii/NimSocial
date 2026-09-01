@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import { z, ZodError } from "zod";
 import { normalizeNimiqAddress, randomToken, sha256Hex, verifyNimiqMessage } from "./auth/crypto.js";
 import type { AppConfig } from "./config/env.js";
-import type { Application, Job, JobMessage, Post, PostKind, Session, User } from "./domain/models.js";
+import type { Application, Job, JobMessage, Post, PostKind, Review, Session, User } from "./domain/models.js";
 import type { PaymentVerifier } from "./ports/payment-verifier.js";
 import type { Store } from "./ports/store.js";
 
@@ -22,7 +22,20 @@ const publishSchema = z.object({ txHash: z.string().regex(/^[a-fA-F0-9]{64}$/) }
 const jobSchema = z.object({ title: z.string().trim().min(3).max(120), description: z.string().trim().min(10).max(5000), budgetUsdtMicros: z.string().regex(/^\d{1,18}$/), deadline: z.coerce.date() });
 const applicationSchema = z.object({ message: z.string().trim().min(3).max(2000) });
 const messageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
+const profileSchema = z.object({
+  displayName:z.string().trim().min(2).max(60),
+  bio:z.string().trim().max(280).default(""),
+  profileRole:z.enum(["worker","client","both"]),
+  professionalTitle:z.string().trim().min(2).max(80),
+  skills:z.array(z.string().trim().min(1).max(32)).max(12).transform((items)=>[...new Set(items.map((item)=>item.toLowerCase()))]),
+  availability:z.enum(["open","busy","not_open"]),
+  workPreference:z.enum(["remote","hybrid","onsite","flexible"]),
+  location:z.string().trim().max(80).default(""),
+});
+const profileQuerySchema=z.object({q:z.string().trim().max(80).optional(),role:z.enum(["worker","client","both"]).optional(),availability:z.enum(["open","busy","not_open"]).optional(),skill:z.string().trim().max(32).optional(),limit:z.coerce.number().int().min(1).max(50).default(24)});
+const reviewSchema=z.object({quality:z.number().int().min(1).max(5),delivery:z.number().int().min(1).max(5),communication:z.number().int().min(1).max(5),reliability:z.number().int().min(1).max(5),body:z.string().trim().max(500).optional()});
 const idParams = z.object({ id: z.string().min(8).max(64) });
+const walletParams=z.object({walletAddress:z.string().min(30).max(50)});
 
 export interface AppDependencies { config: AppConfig; store: Store; paymentVerifier: PaymentVerifier; now?: () => Date }
 
@@ -82,7 +95,7 @@ export async function buildApp(deps: AppDependencies) {
     if (!challenge || challenge.walletAddress !== walletAddress) throw httpError(401, "Challenge is invalid or expired");
     if (!verifyNimiqMessage({ walletAddress, publicKeyHex: input.publicKey, signatureHex: input.signature, message: challenge.message })) throw httpError(401, "Signature is invalid");
     const createdAt = now();
-    const user: User = { walletAddress, publicKey: input.publicKey.toLowerCase(), displayName: null, bio: null, createdAt };
+    const user: User = { walletAddress, publicKey: input.publicKey.toLowerCase(), displayName: null, bio: null, profileRole:null, professionalTitle:null, skills:[], availability:"not_open", workPreference:null, location:null, onboardingCompletedAt:null, createdAt };
     await deps.store.upsertUser(user);
     const token = randomToken();
     const expiresAt = new Date(createdAt.getTime() + deps.config.SESSION_TTL_SECONDS * 1000);
@@ -99,6 +112,45 @@ export async function buildApp(deps: AppDependencies) {
     await deps.store.revokeSession(sha256Hex(token));
     reply.clearCookie("nimsocial_session", { path: "/" });
     return reply.code(204).send();
+  });
+
+  app.get("/v1/me/profile", async (request) => {
+    const wallet=await authenticate(request); const user=await deps.store.findUser(wallet); if(!user) throw httpError(404,"Profile not found");
+    return {profile:await profilePayload(deps.store,user,wallet)};
+  });
+
+  app.patch("/v1/me/profile", async (request) => {
+    const wallet=await authenticate(request); const input=profileSchema.parse(request.body);
+    const user=await deps.store.updateUserProfile(wallet,{displayName:input.displayName,bio:input.bio||null,profileRole:input.profileRole,professionalTitle:input.professionalTitle,skills:input.skills,availability:input.availability,workPreference:input.workPreference,location:input.location||null,onboardingCompletedAt:now()});
+    if(!user) throw httpError(404,"Profile not found"); return {profile:await profilePayload(deps.store,user,wallet)};
+  });
+
+  app.get("/v1/profiles", async (request) => {
+    const query=profileQuerySchema.parse(request.query); const profiles=await deps.store.listProfiles(query.limit);
+    const needle=query.q?.toLowerCase(); const filtered=profiles.filter((profile)=>{
+      if(query.role&&profile.profileRole!==query.role&&profile.profileRole!=="both") return false;
+      if(query.availability&&profile.availability!==query.availability) return false;
+      if(query.skill&&!profile.skills.includes(query.skill.toLowerCase())) return false;
+      return !needle||[profile.displayName,profile.professionalTitle,profile.bio,profile.location,...profile.skills].some((value)=>value?.toLowerCase().includes(needle));
+    });
+    return {items:await Promise.all(filtered.map((profile)=>profilePayload(deps.store,profile)))};
+  });
+
+  app.get("/v1/profiles/:walletAddress", async (request) => {
+    const wallet=parseNimiqAddress(walletParams.parse(request.params).walletAddress); const user=await deps.store.findUser(wallet); if(!user||!user.onboardingCompletedAt) throw httpError(404,"Profile not found");
+    return {profile:await profilePayload(deps.store,user)};
+  });
+
+  app.get("/v1/profiles/:walletAddress/posts", async (request) => {
+    const wallet=parseNimiqAddress(walletParams.parse(request.params).walletAddress); const posts=await deps.store.listPostsByAuthor(wallet,30); return {items:posts.map(publicPost)};
+  });
+
+  app.post("/v1/profiles/:walletAddress/follow", async (request,reply) => {
+    const follower=await authenticate(request); const followed=parseNimiqAddress(walletParams.parse(request.params).walletAddress); if(follower===followed) throw httpError(400,"You cannot follow yourself"); if(!await deps.store.findUser(followed)) throw httpError(404,"Profile not found"); await deps.store.follow(follower,followed); return reply.code(204).send();
+  });
+
+  app.delete("/v1/profiles/:walletAddress/follow", async (request,reply) => {
+    const follower=await authenticate(request); const followed=parseNimiqAddress(walletParams.parse(request.params).walletAddress); await deps.store.unfollow(follower,followed); return reply.code(204).send();
   });
 
   app.get("/v1/feed", async (request) => {
@@ -171,12 +223,26 @@ export async function buildApp(deps: AppDependencies) {
   app.get("/v1/jobs/:id/messages", async (request) => { const wallet=await authenticate(request); const {id}=idParams.parse(request.params); await assertJobParty(deps.store,id,wallet); return {items:await deps.store.listMessages(id)}; });
   app.post("/v1/jobs/:id/messages", async (request, reply) => { const wallet=await authenticate(request); const {id}=idParams.parse(request.params); await assertJobParty(deps.store,id,wallet); const input=messageSchema.parse(request.body); const message:JobMessage={id:nanoid(),jobId:id,senderWallet:wallet,body:input.body,createdAt:now()}; await deps.store.createMessage(message); return reply.code(201).send({message}); });
 
+  app.post("/v1/jobs/:id/reviews", async (request,reply) => {
+    const wallet=await authenticate(request); const {id}=idParams.parse(request.params); const input=reviewSchema.parse(request.body); const job=await deps.store.findJob(id);
+    if(!job) throw httpError(404,"Job not found"); if(job.clientWallet!==wallet) throw httpError(403,"Only the client can review the worker"); if(job.state!=="settled") throw httpError(409,"Reviews unlock after settlement"); if(!job.workerWallet) throw httpError(409,"Job has no accepted worker");
+    const review:Review={id:nanoid(),jobId:id,reviewerWallet:wallet,subjectWallet:job.workerWallet,quality:input.quality,delivery:input.delivery,communication:input.communication,reliability:input.reliability,body:input.body??null,createdAt:now()}; await deps.store.createReview(review); return reply.code(201).send({review:publicReview(review)});
+  });
+
   return app;
 }
 
 function feeFor(kind: PostKind, config: AppConfig) { return kind === "update" || kind === "proof" ? config.NIMIQ_UPDATE_FEE_LUNA : config.NIMIQ_POST_FEE_LUNA; }
 function publicPost(post: Post) { return {...post,requiredLuna:post.requiredLuna.toString(),createdAt:post.createdAt.toISOString(),publishedAt:post.publishedAt?.toISOString()??null}; }
 function publicJob(job: Job) { return {...job,budgetUsdtMicros:job.budgetUsdtMicros.toString(),deadline:job.deadline.toISOString(),createdAt:job.createdAt.toISOString()}; }
+function publicReview(review:Review) { return {...review,createdAt:review.createdAt.toISOString()}; }
+async function profilePayload(store:Store,user:User,viewer?:string) {
+  const [counts,reviews,following]=await Promise.all([store.countFollowers(user.walletAddress),store.listReviewsForUser(user.walletAddress),viewer?store.isFollowing(viewer,user.walletAddress):false]);
+  const average=(key:"quality"|"delivery"|"communication"|"reliability")=>reviews.length?Number((reviews.reduce((sum,review)=>sum+review[key],0)/reviews.length).toFixed(1)):null;
+  const dimensions={quality:average("quality"),delivery:average("delivery"),communication:average("communication"),reliability:average("reliability")};
+  const values=Object.values(dimensions).filter((value):value is number=>value!==null); const score=values.length?Math.round((values.reduce((sum,value)=>sum+value,0)/values.length)*20):null;
+  return {...user,publicKey:undefined,createdAt:user.createdAt.toISOString(),onboardingCompletedAt:user.onboardingCompletedAt?.toISOString()??null,...counts,isFollowing:following,reputation:{score,reviewCount:reviews.length,confidence:Math.min(100,Math.round(reviews.length/5*100)),dimensions,credentialTxHash:null}};
+}
 async function assertJobParty(store:Store,id:string,wallet:string) { const job=await store.findJob(id); if(!job) throw httpError(404,"Job not found"); if(job.clientWallet!==wallet&&job.workerWallet!==wallet) throw httpError(403,"Only job participants can access messages"); }
 function httpError(statusCode:number,message:string) { return Object.assign(new Error(message),{statusCode}); }
 function parseNimiqAddress(value:string) { try { return normalizeNimiqAddress(value); } catch { throw httpError(400,"Invalid Nimiq address"); } }

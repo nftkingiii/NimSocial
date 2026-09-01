@@ -12,16 +12,16 @@ function relativeTime(value: string | null) {
   return hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`;
 }
 
-export function PostCard({ post }: { post: FeedPost }) {
+export function PostCard({ post, onOpenProfile }: { post: FeedPost; onOpenProfile?: (walletAddress:string)=>void }) {
   const name = post.authorName ?? post.authorWallet;
   return (
     <article className="post-card">
       <header className="post-card__header">
-        <Avatar name={name} />
-        <div className="post-card__identity">
+        <button className="avatar-button" type="button" onClick={()=>onOpenProfile?.(post.authorWallet)} aria-label={`Open ${name}'s profile`}><Avatar name={name} /></button>
+        <button className="post-card__identity" type="button" onClick={()=>onOpenProfile?.(post.authorWallet)}>
           <div><strong>{name}</strong>{post.kind === "proof" && <CheckCircle2 className="verified-icon" size={15} aria-label="Evidence attached" />}</div>
           <span>{post.authorRole ?? post.authorWallet} · {relativeTime(post.publishedAt)}</span>
-        </div>
+        </button>
         <span className={`kind kind--${post.kind}`}>{labels[post.kind]}</span>
       </header>
 

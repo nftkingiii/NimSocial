@@ -5,6 +5,7 @@
 - Wallet ownership and session authority
 - Paid-post publication rights
 - Job content and participant-only messages
+- Public profile data, follow relationships, and reputation integrity
 - USDT held by the escrow contract
 - Nimiq and Polygon RPC responses
 
@@ -21,6 +22,8 @@ The client, all request bodies, transaction hashes, post content, wallet address
 | Payment spoofing | Fetch transaction server-side and match confirmation, sender, recipient, minimum value, and exact data reference |
 | Payment reuse | Unique database constraint on transaction hash |
 | Unauthorized job access | Client/accepted-worker authorization on messages and worker-only proof publishing |
+| Reputation manipulation | Reviews require a settled job, the original client, the accepted worker, bounded ratings, and one review per reviewer/subject/job tuple |
+| Profile privacy surprise | Professional fields are intentionally public; onboarding marks optional location data and never stores session authority in browser persistence |
 | Injection and oversized input | Parameterized SQL, Zod schemas, bounded strings, and 64 KiB body limit |
 | Brute force or resource exhaustion | Per-IP rate limits, stricter auth limits, pagination caps, RPC timeout |
 | Client escrow theft | No unilateral cancellation after funding; state transitions use checks-effects-interactions and reentrancy protection |
@@ -37,3 +40,5 @@ The client, all request bodies, transaction hashes, post content, wallet address
 - Add an escrow-chain indexer or finality-aware refresh endpoint so API job state is derived from contract events.
 - Commission an independent Solidity audit before handling material value.
 - Validate the complete login and transaction response shapes inside the current Nimiq Pay release.
+- Define appeal, moderation, and anti-collusion policy before reputation affects ranking or becomes an on-chain attestation.
+- Do not expose or market a mintable credential until its non-transferable schema, revocation path, and deployed contract are independently reviewed.

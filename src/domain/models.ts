@@ -1,11 +1,34 @@
 export type PostKind = "request" | "service" | "update" | "proof";
 export type PostState = "draft" | "published" | "rejected";
+export type ProfileRole = "worker" | "client" | "both";
+export type Availability = "open" | "busy" | "not_open";
+export type WorkPreference = "remote" | "hybrid" | "onsite" | "flexible";
 
 export interface User {
   walletAddress: string;
   publicKey: string;
   displayName: string | null;
   bio: string | null;
+  profileRole: ProfileRole | null;
+  professionalTitle: string | null;
+  skills: string[];
+  availability: Availability;
+  workPreference: WorkPreference | null;
+  location: string | null;
+  onboardingCompletedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface Review {
+  id: string;
+  jobId: string;
+  reviewerWallet: string;
+  subjectWallet: string;
+  quality: number;
+  delivery: number;
+  communication: number;
+  reliability: number;
+  body: string | null;
   createdAt: Date;
 }
 

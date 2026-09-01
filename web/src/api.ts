@@ -1,4 +1,4 @@
-import type { FeedPost, PaymentIntent, PostKind } from "./types";
+import type { FeedPost, PaymentIntent, PostKind, ProfessionalProfile, ProfileInput } from "./types";
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
@@ -58,3 +58,10 @@ export async function publishPost(postId: string, txHash: string): Promise<FeedP
   });
   return response.post;
 }
+
+export async function fetchMyProfile():Promise<ProfessionalProfile> { return (await request<{profile:ProfessionalProfile}>("/v1/me/profile")).profile; }
+export async function saveMyProfile(input:ProfileInput):Promise<ProfessionalProfile> { return (await request<{profile:ProfessionalProfile}>("/v1/me/profile",{method:"PATCH",body:JSON.stringify(input)})).profile; }
+export async function fetchProfiles():Promise<ProfessionalProfile[]> { return (await request<{items:ProfessionalProfile[]}>("/v1/profiles?limit=24")).items; }
+export async function fetchProfile(walletAddress:string):Promise<ProfessionalProfile> { return (await request<{profile:ProfessionalProfile}>(`/v1/profiles/${encodeURIComponent(walletAddress)}`)).profile; }
+export async function fetchProfilePosts(walletAddress:string):Promise<FeedPost[]> { return (await request<{items:FeedPost[]}>(`/v1/profiles/${encodeURIComponent(walletAddress)}/posts`)).items; }
+export async function setProfileFollow(walletAddress:string,following:boolean):Promise<void> { return request(`/v1/profiles/${encodeURIComponent(walletAddress)}/follow`,{method:following?"POST":"DELETE"}); }

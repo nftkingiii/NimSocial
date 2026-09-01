@@ -1,4 +1,4 @@
-import type { Application, Challenge, Job, JobMessage, Post, Session, User } from "../domain/models.js";
+import type { Application, Challenge, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
 import type { Store } from "../ports/store.js";
 
 export class MemoryStore implements Store {
@@ -9,6 +9,8 @@ export class MemoryStore implements Store {
   readonly jobs = new Map<string, Job>();
   readonly applications = new Map<string, Application>();
   readonly messages = new Map<string, JobMessage>();
+  readonly follows = new Set<string>();
+  readonly reviews = new Map<string, Review>();
 
   async createChallenge(challenge: Challenge) { this.challenges.set(challenge.id, challenge); }
   async consumeChallenge(id: string, nonceHash: string, now: Date) {
@@ -18,6 +20,15 @@ export class MemoryStore implements Store {
     return value;
   }
   async upsertUser(user: User) { this.users.set(user.walletAddress, this.users.get(user.walletAddress) ?? user); }
+  async findUser(walletAddress: string) { return this.users.get(walletAddress) ?? null; }
+  async updateUserProfile(walletAddress: string, profile: Pick<User,"displayName"|"bio"|"profileRole"|"professionalTitle"|"skills"|"availability"|"workPreference"|"location"|"onboardingCompletedAt">) {
+    const user=this.users.get(walletAddress); if(!user) return null; Object.assign(user,profile); return user;
+  }
+  async listProfiles(limit: number) { return [...this.users.values()].filter((user)=>user.onboardingCompletedAt).slice(0,limit); }
+  async follow(followerWallet:string,followedWallet:string) { this.follows.add(`${followerWallet}:${followedWallet}`); }
+  async unfollow(followerWallet:string,followedWallet:string) { this.follows.delete(`${followerWallet}:${followedWallet}`); }
+  async isFollowing(followerWallet:string,followedWallet:string) { return this.follows.has(`${followerWallet}:${followedWallet}`); }
+  async countFollowers(walletAddress:string) { let followers=0,following=0; for(const edge of this.follows){const [from,to]=edge.split(":");if(to===walletAddress)followers++;if(from===walletAddress)following++;} return {followers,following}; }
   async createSession(session: Session) { this.sessions.set(session.tokenHash, session); }
   async findSession(tokenHash: string, now: Date) {
     const session = this.sessions.get(tokenHash);
@@ -39,6 +50,7 @@ export class MemoryStore implements Store {
       .sort((a, b) => b.publishedAt!.getTime() - a.publishedAt!.getTime())
       .slice(0, limit);
   }
+  async listPostsByAuthor(walletAddress:string,limit:number) { return [...this.posts.values()].filter((post)=>post.authorWallet===walletAddress&&post.state==="published").sort((a,b)=>b.publishedAt!.getTime()-a.publishedAt!.getTime()).slice(0,limit); }
   async createJob(job: Job) { this.jobs.set(job.id, job); }
   async findJob(id: string) { return this.jobs.get(id) ?? null; }
   async createApplication(application: Application) {
@@ -58,4 +70,6 @@ export class MemoryStore implements Store {
   }
   async createMessage(message: JobMessage) { this.messages.set(message.id, message); }
   async listMessages(jobId: string) { return [...this.messages.values()].filter((message) => message.jobId === jobId).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()); }
+  async createReview(review:Review) { if([...this.reviews.values()].some((item)=>item.jobId===review.jobId&&item.reviewerWallet===review.reviewerWallet&&item.subjectWallet===review.subjectWallet)) throw Object.assign(new Error("Already reviewed"),{code:"23505"}); this.reviews.set(review.id,review); }
+  async listReviewsForUser(walletAddress:string) { return [...this.reviews.values()].filter((review)=>review.subjectWallet===walletAddress); }
 }
