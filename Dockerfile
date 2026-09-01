@@ -18,4 +18,4 @@ COPY --from=build /app/dist-web ./dist-web
 COPY migrations ./migrations
 USER nimsocial
 EXPOSE 8080
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "node dist/infra/migrate.js && node dist/server.js"]
