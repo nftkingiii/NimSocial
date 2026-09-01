@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/lib/
+PROJECT_STATE.md
+HACK_EVENT_GATE.json
+.private/
