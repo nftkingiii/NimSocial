@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "check": "npm run lint && npm run test && npm run build && npm run contracts:test",
+    "check": "npm run lint && npm run web:typecheck && npm run test && npm run build && npm run web:build && npm run contracts:test",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
     "db:migrate": "tsx --env-file=.env src/infra/migrate.ts",
@@ -19,25 +19,39 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "web:build": "vite build --config web/vite.config.ts",
+    "web:dev": "vite --config web/vite.config.ts",
+    "web:preview": "vite preview --config web/vite.config.ts",
+    "web:typecheck": "tsc -p web/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",
     "@fastify/cors": "11.3.0",
     "@fastify/helmet": "13.1.1",
     "@fastify/rate-limit": "11.2.0",
+    "@fontsource-variable/manrope": "5.2.8",
+    "@fontsource-variable/newsreader": "5.2.8",
+    "@nimiq/mini-app-sdk": "0.1.0",
     "@nimiq/core": "2.21.0",
     "fastify": "5.12.1",
     "nanoid": "6.0.1",
     "pg": "8.23.0",
+    "lucide-react": "1.38.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "zod": "4.5.4"
   },
   "devDependencies": {
     "@openzeppelin/contracts": "5.4.0",
     "@types/node": "26.4.0",
     "@types/pg": "8.23.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.1.1",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
+    "vite": "8.2.2",
     "vitest": "4.1.11"
   }
 }

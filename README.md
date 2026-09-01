@@ -2,7 +2,7 @@
 
 NimSocial is a wallet-native public work network for Nimiq Pay. People publish requests, service ads, progress updates, and proof of work into a public feed. Publishing is unlocked by a small, verifiable NIM payment; jobs use a separate non-custodial USDT escrow on Polygon.
 
-This repository currently contains the **backend only**. No frontend has been started.
+The repository now contains the backend, tested escrow contract, and the first mobile-first frontend slice.
 
 ## What is implemented
 
@@ -16,20 +16,23 @@ This repository currently contains the **backend only**. No frontend has been st
 - PostgreSQL schema and parameterized repository
 - Polygon USDT escrow contract with fund, submit, approve, dispute, arbitrate, and deadline-refund states
 - Rate limiting, restricted CORS, security headers, bounded payloads, and Zod validation
+- Responsive React frontend with feed, discovery, jobs, profile, and paid-post composer states
+- Nimiq Pay SDK flow for wallet discovery, signed login, payment-with-data, and publication confirmation
+- Original NimSocial proof-path identity, favicon, and app icon
 
 The contract is compiled and tested locally, but **is not deployed**. RPC endpoints, treasury address, Polygon token, and future escrow deployment addresses are environment configuration—not bundled secrets.
 
 ## Architecture
 
 ```text
-Nimiq Pay mini app (future frontend)
+Nimiq Pay mini app (React frontend)
        | signed login / API requests
        v
 Fastify API ---- PostgreSQL (content, jobs, sessions)
        |
        +---- Nimiq JSON-RPC (verify paid-post transaction)
 
-Nimiq Pay EIP-1193 provider (future frontend)
+Nimiq Pay EIP-1193 provider
        |
        +---- Polygon USDT ---- NimSocialEscrow
 ```
@@ -47,6 +50,7 @@ cp .env.example .env
 # Set a valid Nimiq RPC URL and treasury address in .env
 npm run db:migrate
 npm run dev
+npm run web:dev
 ```
 
 Run all checks:
@@ -55,6 +59,14 @@ Run all checks:
 npm run check
 npm audit --audit-level=high
 ```
+
+The frontend runs at `http://localhost:5173` and proxies API requests to `http://127.0.0.1:8080`. Use `VITE_API_URL` when the API is hosted separately.
+
+## Frontend and brand
+
+The interface combines a wallet-aware public feed, workflow-led mobile navigation, and explicit proof metadata. When the API has no published activity, the UI shows clearly labeled illustrative preview content rather than presenting fixtures as live data.
+
+Brand files live in `web/public/brand/`. The mark is a continuous **proof path** forming an `N` between two verified endpoints. See `web/BRAND.md` for concept, palette, and usage rules.
 
 ## API surface
 
@@ -89,9 +101,9 @@ There is deliberately no unilateral client cancellation after funding. That woul
 
 ## Current boundary
 
-Built and locally verified: API logic, PostgreSQL adapter, Nimiq signature verification, transaction-proof adapter, and escrow state machine.
+Built and locally verified: API logic, PostgreSQL adapter, Nimiq signature verification, transaction-proof adapter, escrow state machine, responsive frontend build, and browser-rendered desktop/mobile states.
 
-Not yet live-verified: a real Nimiq Pay interaction, a public Nimiq RPC/payment, a deployed Polygon contract, and any frontend. These require user-controlled deployment addresses and the frontend phase.
+Not yet live-verified: a real Nimiq Pay signature/payment, a public Nimiq RPC payment confirmation, and a deployed Polygon contract. These require Nimiq Pay on a device, funded user-controlled test wallets, and deployment addresses.
 
 See [the threat model](docs/THREAT_MODEL.md) for the security boundary.
 
