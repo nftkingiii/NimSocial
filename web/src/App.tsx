@@ -35,6 +35,7 @@ import { PostCard } from "./components/PostCard";
 import { ProfileCard } from "./components/ProfileCard";
 import {
   createConversation,
+  createPostReply,
   createPostIntent,
   fetchConversations,
   fetchDirectMessages,
@@ -43,9 +44,11 @@ import {
   fetchProfile,
   fetchProfilePosts,
   fetchProfiles,
+  fetchPostReplies,
   publishPost,
   saveMyProfile,
   sendDirectMessage,
+  setPostEngagement,
   setProfileFollow,
 } from "./api";
 import { previewPosts, previewProfiles } from "./preview-data";
@@ -104,6 +107,7 @@ export default function App() {
     Record<string, DirectMessage[]>
   >({});
   const [notice, setNotice] = useState<Notice>(null);
+  const feedScrollPosition = useRef(0);
 
   useEffect(() => {
     fetchFeed()
@@ -160,6 +164,10 @@ export default function App() {
 
   const handleNavigation = (next: AppSection) => {
     setMobileMenuOpen(false);
+    if (next === "feed" && section === "feed") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     if (next === "post") {
       setComposeOpen(true);
       return;
@@ -180,31 +188,140 @@ export default function App() {
     setSection(next);
   };
 
-  const openThread = (post: FeedPost) => {
+  const openThread = async (post: FeedPost) => {
+    feedScrollPosition.current = window.scrollY;
     setActivePost(post);
     setSection("thread");
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!post.preview && !replies[post.id]) {
+      try {
+        const items = await fetchPostReplies(post.id);
+        setReplies((current) => ({ ...current, [post.id]: items }));
+      } catch (error) {
+        setNotice({
+          tone: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Replies could not be loaded.",
+        });
+      }
+    }
   };
-  const addReply = (post: FeedPost, body: string) => {
-    const reply: PostReply = {
+  const closeThread = () => {
+    setSection("feed");
+    window.requestAnimationFrame(() =>
+      window.scrollTo({ top: feedScrollPosition.current, behavior: "instant" }),
+    );
+  };
+  const updatePost = (postId: string, engagement: FeedPost["engagement"]) => {
+    setPosts((items) =>
+      items.map((item) =>
+        item.id === postId ? { ...item, engagement } : item,
+      ),
+    );
+    setActivePost((item) =>
+      item?.id === postId ? { ...item, engagement } : item,
+    );
+  };
+  const addReply = async (post: FeedPost, body: string) => {
+    if (!post.preview && !wallet) {
+      setNotice({ tone: "info", message: "Connect Nimiq Pay to reply." });
+      return;
+    }
+    const optimistic: PostReply = {
       id: crypto.randomUUID(),
       postId: post.id,
+      authorWallet: wallet?.address ?? "PREVIEW-YOU",
       authorName: wallet?.shortAddress ?? "You",
       authorRole: wallet ? "Nimiq member" : "Preview member",
       body,
       createdAt: new Date().toISOString(),
-      preview: !wallet,
+      preview: post.preview,
     };
     setReplies((current) => ({
       ...current,
-      [post.id]: [...(current[post.id] ?? []), reply],
+      [post.id]: [...(current[post.id] ?? []), optimistic],
     }));
-    setNotice({
-      tone: "success",
-      message: wallet
-        ? "Reply added for this session."
-        : "Preview reply added for this session.",
+    updatePost(post.id, {
+      ...post.engagement,
+      replies: post.engagement.replies + 1,
     });
+    if (post.preview) return;
+    try {
+      const result = await createPostReply(post.id, body);
+      setReplies((current) => ({
+        ...current,
+        [post.id]: (current[post.id] ?? []).map((item) =>
+          item.id === optimistic.id ? result.reply : item,
+        ),
+      }));
+      updatePost(post.id, result.engagement);
+    } catch (error) {
+      setReplies((current) => ({
+        ...current,
+        [post.id]: (current[post.id] ?? []).filter(
+          (item) => item.id !== optimistic.id,
+        ),
+      }));
+      updatePost(post.id, post.engagement);
+      setNotice({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Reply not sent.",
+      });
+    }
+  };
+
+  const handlePostAction = async (
+    action: "comment" | "repost" | "appreciate" | "save",
+    post: FeedPost,
+    detail?: string,
+  ) => {
+    if (action === "comment" && detail) {
+      await addReply(post, detail);
+      return;
+    }
+    if (action === "comment") return;
+    if (!post.preview && !wallet) {
+      setNotice({
+        tone: "info",
+        message: "Connect Nimiq Pay to save this interaction.",
+      });
+      return;
+    }
+    const type = action === "save" ? "bookmark" : action;
+    const viewerKey =
+      type === "repost"
+        ? "reposted"
+        : type === "appreciate"
+          ? "appreciated"
+          : "bookmarked";
+    const countKey =
+      type === "repost"
+        ? "reposts"
+        : type === "appreciate"
+          ? "appreciations"
+          : "bookmarks";
+    const active = !post.engagement.viewer[viewerKey];
+    const optimistic = {
+      ...post.engagement,
+      [countKey]: Math.max(0, post.engagement[countKey] + (active ? 1 : -1)),
+      viewer: { ...post.engagement.viewer, [viewerKey]: active },
+    };
+    updatePost(post.id, optimistic);
+    if (post.preview) return;
+    try {
+      updatePost(post.id, await setPostEngagement(post.id, type, active));
+    } catch (error) {
+      updatePost(post.id, post.engagement);
+      setNotice({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Interaction could not be saved.",
+      });
+    }
   };
 
   const createPaidPost = async (input: {
@@ -588,6 +705,7 @@ export default function App() {
             onCompose={() => setComposeOpen(true)}
             onOpenProfile={openProfile}
             onOpenThread={openThread}
+            onAction={handlePostAction}
             onViewJob={(jobId) => {
               setSection("jobs");
               setNotice({
@@ -595,14 +713,13 @@ export default function App() {
                 message: `Opened ${jobId.replaceAll("_", " ")}.`,
               });
             }}
-            onNotice={setNotice}
           />
         )}
         {section === "thread" && activePost && (
           <ThreadScreen
             post={activePost}
             replies={replies[activePost.id] ?? []}
-            onBack={() => setSection("feed")}
+            onBack={closeThread}
             onOpenProfile={openProfile}
             onViewJob={(jobId) => {
               setSection("jobs");
@@ -612,6 +729,7 @@ export default function App() {
               });
             }}
             onReply={(body) => addReply(activePost, body)}
+            onAction={handlePostAction}
             onMessage={(opening) =>
               startConversation(activePost.authorWallet, activePost, opening)
             }
@@ -854,7 +972,7 @@ function FeedScreen({
   onOpenProfile,
   onOpenThread,
   onViewJob,
-  onNotice,
+  onAction,
 }: {
   posts: FeedPost[];
   source: string;
@@ -862,27 +980,31 @@ function FeedScreen({
   onOpenProfile: (wallet: string) => void;
   onOpenThread: (post: FeedPost) => void;
   onViewJob: (jobId: string) => void;
-  onNotice: (notice: Notice) => void;
+  onAction: (
+    action: "comment" | "repost" | "appreciate" | "save",
+    post: FeedPost,
+    detail?: string,
+  ) => void;
 }) {
-  const [tab, setTab] = useState<"home" | "following" | PostKind>("home");
+  const [tab, setTab] = useState<"home" | "following" | PostKind>(() => {
+    const saved = window.sessionStorage.getItem("nimsocial-feed-tab");
+    return saved === "following" ||
+      saved === "request" ||
+      saved === "service" ||
+      saved === "proof"
+      ? saved
+      : "home";
+  });
+  const selectTab = (value: typeof tab) => {
+    setTab(value);
+    window.sessionStorage.setItem("nimsocial-feed-tab", value);
+  };
   const [relevant, setRelevant] = useState(true);
   const filtered =
     tab === "home" || tab === "following"
       ? posts
       : posts.filter((post) => post.kind === tab);
   const visible = relevant ? filtered : [...filtered].reverse();
-  const action = (kind: "comment" | "repost" | "appreciate" | "save") =>
-    onNotice({
-      tone: "success",
-      message:
-        kind === "comment"
-          ? "Comment added for this session."
-          : kind === "repost"
-            ? "Repost updated."
-            : kind === "appreciate"
-              ? "Appreciation updated."
-              : "Saved posts updated.",
-    });
   return (
     <section className="feed-screen">
       <header className="screen-header">
@@ -921,7 +1043,7 @@ function FeedScreen({
               type="button"
               role="tab"
               aria-selected={tab === value}
-              onClick={() => setTab(value as typeof tab)}
+              onClick={() => selectTab(value as typeof tab)}
             >
               {label}
             </button>
@@ -936,7 +1058,7 @@ function FeedScreen({
           {relevant ? "Relevant first" : "Latest first"}
         </button>
       </div>
-      {source !== "live" && (
+      {source !== "live" && source !== "loading" && (
         <div
           className={`preview-banner ${source === "error" ? "preview-banner--warning" : ""}`}
         >
@@ -947,17 +1069,32 @@ function FeedScreen({
           </span>
         </div>
       )}
-      <section className="feed-stack" aria-label="Posts">
-        {visible.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            onOpenProfile={onOpenProfile}
-            onOpenThread={onOpenThread}
-            onViewJob={onViewJob}
-            onAction={action}
-          />
-        ))}
+      <section
+        className="feed-stack"
+        aria-label="Posts"
+        aria-busy={source === "loading"}
+      >
+        {source === "loading"
+          ? [0, 1, 2].map((item) => (
+              <div className="post-skeleton" key={item} aria-hidden="true">
+                <span />
+                <div>
+                  <i />
+                  <i />
+                  <i />
+                </div>
+              </div>
+            ))
+          : visible.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onOpenProfile={onOpenProfile}
+                onOpenThread={onOpenThread}
+                onViewJob={onViewJob}
+                onAction={onAction}
+              />
+            ))}
       </section>
     </section>
   );
@@ -971,6 +1108,7 @@ function ThreadScreen({
   onViewJob,
   onReply,
   onMessage,
+  onAction,
   onNotice,
 }: {
   post: FeedPost;
@@ -980,6 +1118,11 @@ function ThreadScreen({
   onViewJob: (jobId: string) => void;
   onReply: (body: string) => void;
   onMessage: (opening?: string) => void;
+  onAction: (
+    action: "comment" | "repost" | "appreciate" | "save",
+    post: FeedPost,
+    detail?: string,
+  ) => void;
   onNotice: (notice: Notice) => void;
 }) {
   const [body, setBody] = useState("");
@@ -988,6 +1131,7 @@ function ThreadScreen({
         {
           id: `${post.id}-r1`,
           postId: post.id,
+          authorWallet: "NQ-PREVIEW-KOFI",
           authorName: "Kofi Mensah",
           authorRole: "Nimiq developer",
           body: "The scope is clear. Is the handoff expected in Figma or as production-ready components?",
@@ -997,6 +1141,7 @@ function ThreadScreen({
         {
           id: `${post.id}-r2`,
           postId: post.id,
+          authorWallet: "NQ-PREVIEW-LINA",
           authorName: "Lina Okafor",
           authorRole: "Product designer",
           body: "I’d structure the first milestone around the wallet connection and paid-post confirmation states.",
@@ -1032,19 +1177,7 @@ function ThreadScreen({
         commentCount={visible.length}
         onOpenProfile={onOpenProfile}
         onViewJob={onViewJob}
-        onAction={(action) =>
-          onNotice({
-            tone: "success",
-            message:
-              action === "repost"
-                ? "Repost updated."
-                : action === "appreciate"
-                  ? "Appreciation updated."
-                  : action === "save"
-                    ? "Saved posts updated."
-                    : "Reply added for this session.",
-          })
-        }
+        onAction={onAction}
       />
       {post.kind === "request" && (
         <div className="work-actions">
@@ -1096,12 +1229,14 @@ function ThreadScreen({
       <section className="reply-list" aria-label="Replies">
         {visible.map((reply) => (
           <article className="reply-card" key={reply.id}>
-            <Avatar name={reply.authorName} />
+            <Avatar name={reply.authorName ?? reply.authorWallet} />
             <div>
               <header>
-                <strong>{reply.authorName}</strong>
+                <strong>
+                  {reply.authorName ?? reply.authorWallet.slice(0, 14)}
+                </strong>
                 <span>
-                  {reply.authorRole} ·{" "}
+                  {reply.authorRole ?? "Nimiq member"} ·{" "}
                   {new Intl.RelativeTimeFormat("en", {
                     numeric: "auto",
                   }).format(
@@ -1122,7 +1257,7 @@ function ThreadScreen({
                 onClick={() =>
                   onNotice({
                     tone: "info",
-                    message: `Replying to ${reply.authorName}.`,
+                    message: `Replying to ${reply.authorName ?? reply.authorWallet.slice(0, 14)}.`,
                   })
                 }
               >

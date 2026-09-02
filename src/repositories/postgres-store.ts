@@ -1,90 +1,514 @@
 import type { Pool, PoolClient, QueryResultRow } from "pg";
-import type { Application, Challenge, Conversation, DirectMessage, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
+import type {
+  Application,
+  Challenge,
+  Conversation,
+  DirectMessage,
+  Job,
+  JobMessage,
+  Post,
+  PostEngagementType,
+  PostReply,
+  Review,
+  Session,
+  User,
+} from "../domain/models.js";
 import type { Store } from "../ports/store.js";
 
 export class PostgresStore implements Store {
   constructor(private readonly pool: Pool) {}
 
   async createChallenge(c: Challenge) {
-    await this.pool.query("INSERT INTO auth_challenges(id,wallet_address,nonce_hash,message,expires_at) VALUES($1,$2,$3,$4,$5)", [c.id,c.walletAddress,c.nonceHash,c.message,c.expiresAt]);
+    await this.pool.query(
+      "INSERT INTO auth_challenges(id,wallet_address,nonce_hash,message,expires_at) VALUES($1,$2,$3,$4,$5)",
+      [c.id, c.walletAddress, c.nonceHash, c.message, c.expiresAt],
+    );
   }
   async consumeChallenge(id: string, nonceHash: string, now: Date) {
-    const result = await this.pool.query("UPDATE auth_challenges SET consumed_at=$3 WHERE id=$1 AND nonce_hash=$2 AND consumed_at IS NULL AND expires_at>$3 RETURNING *", [id,nonceHash,now]);
+    const result = await this.pool.query(
+      "UPDATE auth_challenges SET consumed_at=$3 WHERE id=$1 AND nonce_hash=$2 AND consumed_at IS NULL AND expires_at>$3 RETURNING *",
+      [id, nonceHash, now],
+    );
     return result.rows[0] ? challengeFrom(result.rows[0]) : null;
   }
   async upsertUser(u: User) {
-    await this.pool.query("INSERT INTO users(wallet_address,public_key) VALUES($1,$2) ON CONFLICT(wallet_address) DO UPDATE SET public_key=EXCLUDED.public_key, updated_at=NOW()", [u.walletAddress,u.publicKey]);
+    await this.pool.query(
+      "INSERT INTO users(wallet_address,public_key) VALUES($1,$2) ON CONFLICT(wallet_address) DO UPDATE SET public_key=EXCLUDED.public_key, updated_at=NOW()",
+      [u.walletAddress, u.publicKey],
+    );
   }
-  async findUser(walletAddress:string) { const r=await this.pool.query("SELECT * FROM users WHERE wallet_address=$1",[walletAddress]); return r.rows[0]?userFrom(r.rows[0]):null; }
-  async updateUserProfile(walletAddress:string,profile:Pick<User,"displayName"|"bio"|"profileRole"|"professionalTitle"|"skills"|"availability"|"workPreference"|"location"|"onboardingCompletedAt">) {
-    const r=await this.pool.query("UPDATE users SET display_name=$2,bio=$3,profile_role=$4,professional_title=$5,skills=$6::jsonb,availability=$7,work_preference=$8,location=$9,onboarding_completed_at=$10,updated_at=NOW() WHERE wallet_address=$1 RETURNING *",[walletAddress,profile.displayName,profile.bio,profile.profileRole,profile.professionalTitle,JSON.stringify(profile.skills),profile.availability,profile.workPreference,profile.location,profile.onboardingCompletedAt]);
-    return r.rows[0]?userFrom(r.rows[0]):null;
+  async findUser(walletAddress: string) {
+    const r = await this.pool.query(
+      "SELECT * FROM users WHERE wallet_address=$1",
+      [walletAddress],
+    );
+    return r.rows[0] ? userFrom(r.rows[0]) : null;
   }
-  async listProfiles(limit:number) { const r=await this.pool.query("SELECT * FROM users WHERE onboarding_completed_at IS NOT NULL ORDER BY updated_at DESC LIMIT $1",[limit]); return r.rows.map(userFrom); }
-  async follow(followerWallet:string,followedWallet:string) { await this.pool.query("INSERT INTO follows(follower_wallet,followed_wallet) VALUES($1,$2) ON CONFLICT DO NOTHING",[followerWallet,followedWallet]); }
-  async unfollow(followerWallet:string,followedWallet:string) { await this.pool.query("DELETE FROM follows WHERE follower_wallet=$1 AND followed_wallet=$2",[followerWallet,followedWallet]); }
-  async isFollowing(followerWallet:string,followedWallet:string) { const r=await this.pool.query("SELECT 1 FROM follows WHERE follower_wallet=$1 AND followed_wallet=$2",[followerWallet,followedWallet]); return Boolean(r.rows[0]); }
-  async countFollowers(walletAddress:string) { const r=await this.pool.query("SELECT COUNT(*) FILTER (WHERE followed_wallet=$1)::int AS followers,COUNT(*) FILTER (WHERE follower_wallet=$1)::int AS following FROM follows WHERE followed_wallet=$1 OR follower_wallet=$1",[walletAddress]); return {followers:r.rows[0]?.followers??0,following:r.rows[0]?.following??0}; }
+  async updateUserProfile(
+    walletAddress: string,
+    profile: Pick<
+      User,
+      | "displayName"
+      | "bio"
+      | "profileRole"
+      | "professionalTitle"
+      | "skills"
+      | "availability"
+      | "workPreference"
+      | "location"
+      | "onboardingCompletedAt"
+    >,
+  ) {
+    const r = await this.pool.query(
+      "UPDATE users SET display_name=$2,bio=$3,profile_role=$4,professional_title=$5,skills=$6::jsonb,availability=$7,work_preference=$8,location=$9,onboarding_completed_at=$10,updated_at=NOW() WHERE wallet_address=$1 RETURNING *",
+      [
+        walletAddress,
+        profile.displayName,
+        profile.bio,
+        profile.profileRole,
+        profile.professionalTitle,
+        JSON.stringify(profile.skills),
+        profile.availability,
+        profile.workPreference,
+        profile.location,
+        profile.onboardingCompletedAt,
+      ],
+    );
+    return r.rows[0] ? userFrom(r.rows[0]) : null;
+  }
+  async listProfiles(limit: number) {
+    const r = await this.pool.query(
+      "SELECT * FROM users WHERE onboarding_completed_at IS NOT NULL ORDER BY updated_at DESC LIMIT $1",
+      [limit],
+    );
+    return r.rows.map(userFrom);
+  }
+  async follow(followerWallet: string, followedWallet: string) {
+    await this.pool.query(
+      "INSERT INTO follows(follower_wallet,followed_wallet) VALUES($1,$2) ON CONFLICT DO NOTHING",
+      [followerWallet, followedWallet],
+    );
+  }
+  async unfollow(followerWallet: string, followedWallet: string) {
+    await this.pool.query(
+      "DELETE FROM follows WHERE follower_wallet=$1 AND followed_wallet=$2",
+      [followerWallet, followedWallet],
+    );
+  }
+  async isFollowing(followerWallet: string, followedWallet: string) {
+    const r = await this.pool.query(
+      "SELECT 1 FROM follows WHERE follower_wallet=$1 AND followed_wallet=$2",
+      [followerWallet, followedWallet],
+    );
+    return Boolean(r.rows[0]);
+  }
+  async countFollowers(walletAddress: string) {
+    const r = await this.pool.query(
+      "SELECT COUNT(*) FILTER (WHERE followed_wallet=$1)::int AS followers,COUNT(*) FILTER (WHERE follower_wallet=$1)::int AS following FROM follows WHERE followed_wallet=$1 OR follower_wallet=$1",
+      [walletAddress],
+    );
+    return {
+      followers: r.rows[0]?.followers ?? 0,
+      following: r.rows[0]?.following ?? 0,
+    };
+  }
   async createSession(s: Session) {
-    await this.pool.query("INSERT INTO sessions(id,wallet_address,token_hash,expires_at) VALUES($1,$2,$3,$4)", [s.id,s.walletAddress,s.tokenHash,s.expiresAt]);
+    await this.pool.query(
+      "INSERT INTO sessions(id,wallet_address,token_hash,expires_at) VALUES($1,$2,$3,$4)",
+      [s.id, s.walletAddress, s.tokenHash, s.expiresAt],
+    );
   }
   async findSession(tokenHash: string, now: Date) {
-    const result = await this.pool.query("SELECT * FROM sessions WHERE token_hash=$1 AND revoked_at IS NULL AND expires_at>$2", [tokenHash,now]);
+    const result = await this.pool.query(
+      "SELECT * FROM sessions WHERE token_hash=$1 AND revoked_at IS NULL AND expires_at>$2",
+      [tokenHash, now],
+    );
     return result.rows[0] ? sessionFrom(result.rows[0]) : null;
   }
-  async revokeSession(tokenHash: string) { await this.pool.query("UPDATE sessions SET revoked_at=NOW() WHERE token_hash=$1 AND revoked_at IS NULL", [tokenHash]); }
+  async revokeSession(tokenHash: string) {
+    await this.pool.query(
+      "UPDATE sessions SET revoked_at=NOW() WHERE token_hash=$1 AND revoked_at IS NULL",
+      [tokenHash],
+    );
+  }
   async createPost(p: Post) {
-    await this.pool.query("INSERT INTO posts(id,author_wallet,kind,body,job_id,state,payment_reference,required_luna,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [p.id,p.authorWallet,p.kind,p.body,p.jobId,p.state,p.paymentReference,p.requiredLuna.toString(),p.createdAt]);
+    await this.pool.query(
+      "INSERT INTO posts(id,author_wallet,kind,body,job_id,state,payment_reference,required_luna,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+      [
+        p.id,
+        p.authorWallet,
+        p.kind,
+        p.body,
+        p.jobId,
+        p.state,
+        p.paymentReference,
+        p.requiredLuna.toString(),
+        p.createdAt,
+      ],
+    );
   }
-  async findPost(id: string) { const r=await this.pool.query("SELECT * FROM posts WHERE id=$1",[id]); return r.rows[0]?postFrom(r.rows[0]):null; }
+  async findPost(id: string) {
+    const r = await this.pool.query("SELECT * FROM posts WHERE id=$1", [id]);
+    return r.rows[0] ? postFrom(r.rows[0]) : null;
+  }
   async publishPost(id: string, txHash: string, publishedAt: Date) {
-    const r=await this.pool.query("UPDATE posts SET state='published',payment_tx_hash=$2,published_at=$3 WHERE id=$1 AND state='draft' RETURNING *",[id,txHash,publishedAt]);
-    return r.rows[0]?postFrom(r.rows[0]):null;
+    const r = await this.pool.query(
+      "UPDATE posts SET state='published',payment_tx_hash=$2,published_at=$3 WHERE id=$1 AND state='draft' RETURNING *",
+      [id, txHash, publishedAt],
+    );
+    return r.rows[0] ? postFrom(r.rows[0]) : null;
   }
-  async listFeed(cursor: Date|null, limit: number) {
-    const r=await this.pool.query("SELECT * FROM posts WHERE state='published' AND ($1::timestamptz IS NULL OR published_at<$1) ORDER BY published_at DESC,id DESC LIMIT $2",[cursor,limit]);
+  async listFeed(cursor: Date | null, limit: number) {
+    const r = await this.pool.query(
+      "SELECT * FROM posts WHERE state='published' AND ($1::timestamptz IS NULL OR published_at<$1) ORDER BY published_at DESC,id DESC LIMIT $2",
+      [cursor, limit],
+    );
     return r.rows.map(postFrom);
   }
-  async listPostsByAuthor(walletAddress:string,limit:number) { const r=await this.pool.query("SELECT * FROM posts WHERE author_wallet=$1 AND state='published' ORDER BY published_at DESC,id DESC LIMIT $2",[walletAddress,limit]); return r.rows.map(postFrom); }
-  async createJob(j: Job) {
-    await this.pool.query("INSERT INTO jobs(id,client_wallet,title,description,budget_usdt_micros,deadline,state,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",[j.id,j.clientWallet,j.title,j.description,j.budgetUsdtMicros.toString(),j.deadline,j.state,j.createdAt]);
+  async listPostsByAuthor(walletAddress: string, limit: number) {
+    const r = await this.pool.query(
+      "SELECT * FROM posts WHERE author_wallet=$1 AND state='published' ORDER BY published_at DESC,id DESC LIMIT $2",
+      [walletAddress, limit],
+    );
+    return r.rows.map(postFrom);
   }
-  async findJob(id: string) { const r=await this.pool.query("SELECT * FROM jobs WHERE id=$1",[id]); return r.rows[0]?jobFrom(r.rows[0]):null; }
-  async createApplication(a: Application) { await this.pool.query("INSERT INTO applications(id,job_id,applicant_wallet,message,status,created_at) VALUES($1,$2,$3,$4,$5,$6)",[a.id,a.jobId,a.applicantWallet,a.message,a.status,a.createdAt]); }
-  async findApplication(id: string) { const r=await this.pool.query("SELECT * FROM applications WHERE id=$1",[id]); return r.rows[0]?applicationFrom(r.rows[0]):null; }
+  async createPostReply(reply: PostReply) {
+    await this.pool.query(
+      "INSERT INTO post_replies(id,post_id,author_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",
+      [reply.id, reply.postId, reply.authorWallet, reply.body, reply.createdAt],
+    );
+  }
+  async listPostReplies(postId: string, limit: number) {
+    const r = await this.pool.query(
+      "SELECT * FROM post_replies WHERE post_id=$1 ORDER BY created_at ASC,id ASC LIMIT $2",
+      [postId, limit],
+    );
+    return r.rows.map(postReplyFrom);
+  }
+  async setPostEngagement(
+    postId: string,
+    walletAddress: string,
+    type: PostEngagementType,
+    active: boolean,
+  ) {
+    if (active)
+      await this.pool.query(
+        "INSERT INTO post_engagements(post_id,wallet_address,type) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",
+        [postId, walletAddress, type],
+      );
+    else
+      await this.pool.query(
+        "DELETE FROM post_engagements WHERE post_id=$1 AND wallet_address=$2 AND type=$3",
+        [postId, walletAddress, type],
+      );
+  }
+  async getPostEngagement(postId: string, viewerWallet?: string) {
+    const r = await this.pool.query(
+      "SELECT (SELECT COUNT(*)::int FROM post_replies WHERE post_id=$1) replies,COUNT(*) FILTER (WHERE type='repost')::int reposts,COUNT(*) FILTER (WHERE type='appreciate')::int appreciations,COUNT(*) FILTER (WHERE type='bookmark')::int bookmarks,BOOL_OR(wallet_address=$2 AND type='repost') reposted,BOOL_OR(wallet_address=$2 AND type='appreciate') appreciated,BOOL_OR(wallet_address=$2 AND type='bookmark') bookmarked FROM post_engagements WHERE post_id=$1",
+      [postId, viewerWallet ?? null],
+    );
+    const row = r.rows[0];
+    return {
+      replies: row.replies ?? 0,
+      reposts: row.reposts ?? 0,
+      appreciations: row.appreciations ?? 0,
+      bookmarks: row.bookmarks ?? 0,
+      viewer: {
+        reposted: row.reposted ?? false,
+        appreciated: row.appreciated ?? false,
+        bookmarked: row.bookmarked ?? false,
+      },
+    };
+  }
+  async createJob(j: Job) {
+    await this.pool.query(
+      "INSERT INTO jobs(id,client_wallet,title,description,budget_usdt_micros,deadline,state,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+      [
+        j.id,
+        j.clientWallet,
+        j.title,
+        j.description,
+        j.budgetUsdtMicros.toString(),
+        j.deadline,
+        j.state,
+        j.createdAt,
+      ],
+    );
+  }
+  async findJob(id: string) {
+    const r = await this.pool.query("SELECT * FROM jobs WHERE id=$1", [id]);
+    return r.rows[0] ? jobFrom(r.rows[0]) : null;
+  }
+  async createApplication(a: Application) {
+    await this.pool.query(
+      "INSERT INTO applications(id,job_id,applicant_wallet,message,status,created_at) VALUES($1,$2,$3,$4,$5,$6)",
+      [a.id, a.jobId, a.applicantWallet, a.message, a.status, a.createdAt],
+    );
+  }
+  async findApplication(id: string) {
+    const r = await this.pool.query("SELECT * FROM applications WHERE id=$1", [
+      id,
+    ]);
+    return r.rows[0] ? applicationFrom(r.rows[0]) : null;
+  }
   async acceptApplication(jobId: string, applicationId: string) {
-    const client=await this.pool.connect();
+    const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const a=await client.query("SELECT * FROM applications WHERE id=$1 AND job_id=$2 AND status='pending' FOR UPDATE",[applicationId,jobId]);
-      if (!a.rows[0]) { await client.query("ROLLBACK"); return null; }
-      const j=await client.query("UPDATE jobs SET worker_wallet=$2,state='funding',updated_at=NOW() WHERE id=$1 AND state='open' RETURNING *",[jobId,a.rows[0].applicant_wallet]);
-      if (!j.rows[0]) { await client.query("ROLLBACK"); return null; }
-      await client.query("UPDATE applications SET status=CASE WHEN id=$2 THEN 'accepted' ELSE 'rejected' END WHERE job_id=$1",[jobId,applicationId]);
+      const a = await client.query(
+        "SELECT * FROM applications WHERE id=$1 AND job_id=$2 AND status='pending' FOR UPDATE",
+        [applicationId, jobId],
+      );
+      if (!a.rows[0]) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      const j = await client.query(
+        "UPDATE jobs SET worker_wallet=$2,state='funding',updated_at=NOW() WHERE id=$1 AND state='open' RETURNING *",
+        [jobId, a.rows[0].applicant_wallet],
+      );
+      if (!j.rows[0]) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      await client.query(
+        "UPDATE applications SET status=CASE WHEN id=$2 THEN 'accepted' ELSE 'rejected' END WHERE job_id=$1",
+        [jobId, applicationId],
+      );
       await client.query("COMMIT");
       return jobFrom(j.rows[0]);
-    } catch (error) { await rollback(client); throw error; } finally { client.release(); }
+    } catch (error) {
+      await rollback(client);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
-  async createMessage(m: JobMessage) { await this.pool.query("INSERT INTO job_messages(id,job_id,sender_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",[m.id,m.jobId,m.senderWallet,m.body,m.createdAt]); }
-  async listMessages(jobId: string) { const r=await this.pool.query("SELECT * FROM job_messages WHERE job_id=$1 ORDER BY created_at ASC,id ASC",[jobId]); return r.rows.map(messageFrom); }
-  async createConversation(c:Conversation) { await this.pool.query("INSERT INTO conversations(id,member_a,member_b,context_post_id,created_at) VALUES($1,$2,$3,$4,$5)",[c.id,c.memberA,c.memberB,c.contextPostId,c.createdAt]); }
-  async findConversation(id:string) { const r=await this.pool.query("SELECT * FROM conversations WHERE id=$1",[id]); return r.rows[0]?conversationFrom(r.rows[0]):null; }
-  async findDirectConversation(memberA:string,memberB:string,contextPostId:string|null) { const r=await this.pool.query("SELECT * FROM conversations WHERE member_a=$1 AND member_b=$2 AND context_post_id IS NOT DISTINCT FROM $3",[memberA,memberB,contextPostId]); return r.rows[0]?conversationFrom(r.rows[0]):null; }
-  async listConversations(walletAddress:string) { const r=await this.pool.query("SELECT c.*,m.id AS last_id,m.sender_wallet AS last_sender_wallet,m.body AS last_body,m.created_at AS last_created_at FROM conversations c LEFT JOIN LATERAL (SELECT * FROM direct_messages WHERE conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1) m ON true WHERE c.member_a=$1 OR c.member_b=$1 ORDER BY COALESCE(m.created_at,c.created_at) DESC",[walletAddress]); return r.rows.map((row)=>({conversation:conversationFrom(row),lastMessage:row.last_id?{id:row.last_id,conversationId:row.id,senderWallet:row.last_sender_wallet,body:row.last_body,createdAt:new Date(row.last_created_at)}:null})); }
-  async createDirectMessage(m:DirectMessage) { await this.pool.query("INSERT INTO direct_messages(id,conversation_id,sender_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",[m.id,m.conversationId,m.senderWallet,m.body,m.createdAt]); }
-  async listDirectMessages(conversationId:string) { const r=await this.pool.query("SELECT * FROM direct_messages WHERE conversation_id=$1 ORDER BY created_at ASC,id ASC",[conversationId]); return r.rows.map(directMessageFrom); }
-  async createReview(review:Review) { await this.pool.query("INSERT INTO reviews(id,job_id,reviewer_wallet,subject_wallet,quality,delivery,communication,reliability,body,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",[review.id,review.jobId,review.reviewerWallet,review.subjectWallet,review.quality,review.delivery,review.communication,review.reliability,review.body,review.createdAt]); }
-  async listReviewsForUser(walletAddress:string) { const r=await this.pool.query("SELECT * FROM reviews WHERE subject_wallet=$1 ORDER BY created_at DESC",[walletAddress]); return r.rows.map(reviewFrom); }
+  async createMessage(m: JobMessage) {
+    await this.pool.query(
+      "INSERT INTO job_messages(id,job_id,sender_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",
+      [m.id, m.jobId, m.senderWallet, m.body, m.createdAt],
+    );
+  }
+  async listMessages(jobId: string) {
+    const r = await this.pool.query(
+      "SELECT * FROM job_messages WHERE job_id=$1 ORDER BY created_at ASC,id ASC",
+      [jobId],
+    );
+    return r.rows.map(messageFrom);
+  }
+  async createConversation(c: Conversation) {
+    await this.pool.query(
+      "INSERT INTO conversations(id,member_a,member_b,context_post_id,created_at) VALUES($1,$2,$3,$4,$5)",
+      [c.id, c.memberA, c.memberB, c.contextPostId, c.createdAt],
+    );
+  }
+  async findConversation(id: string) {
+    const r = await this.pool.query("SELECT * FROM conversations WHERE id=$1", [
+      id,
+    ]);
+    return r.rows[0] ? conversationFrom(r.rows[0]) : null;
+  }
+  async findDirectConversation(
+    memberA: string,
+    memberB: string,
+    contextPostId: string | null,
+  ) {
+    const r = await this.pool.query(
+      "SELECT * FROM conversations WHERE member_a=$1 AND member_b=$2 AND context_post_id IS NOT DISTINCT FROM $3",
+      [memberA, memberB, contextPostId],
+    );
+    return r.rows[0] ? conversationFrom(r.rows[0]) : null;
+  }
+  async listConversations(walletAddress: string) {
+    const r = await this.pool.query(
+      "SELECT c.*,m.id AS last_id,m.sender_wallet AS last_sender_wallet,m.body AS last_body,m.created_at AS last_created_at FROM conversations c LEFT JOIN LATERAL (SELECT * FROM direct_messages WHERE conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1) m ON true WHERE c.member_a=$1 OR c.member_b=$1 ORDER BY COALESCE(m.created_at,c.created_at) DESC",
+      [walletAddress],
+    );
+    return r.rows.map((row) => ({
+      conversation: conversationFrom(row),
+      lastMessage: row.last_id
+        ? {
+            id: row.last_id,
+            conversationId: row.id,
+            senderWallet: row.last_sender_wallet,
+            body: row.last_body,
+            createdAt: new Date(row.last_created_at),
+          }
+        : null,
+    }));
+  }
+  async createDirectMessage(m: DirectMessage) {
+    await this.pool.query(
+      "INSERT INTO direct_messages(id,conversation_id,sender_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",
+      [m.id, m.conversationId, m.senderWallet, m.body, m.createdAt],
+    );
+  }
+  async listDirectMessages(conversationId: string) {
+    const r = await this.pool.query(
+      "SELECT * FROM direct_messages WHERE conversation_id=$1 ORDER BY created_at ASC,id ASC",
+      [conversationId],
+    );
+    return r.rows.map(directMessageFrom);
+  }
+  async createReview(review: Review) {
+    await this.pool.query(
+      "INSERT INTO reviews(id,job_id,reviewer_wallet,subject_wallet,quality,delivery,communication,reliability,body,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+      [
+        review.id,
+        review.jobId,
+        review.reviewerWallet,
+        review.subjectWallet,
+        review.quality,
+        review.delivery,
+        review.communication,
+        review.reliability,
+        review.body,
+        review.createdAt,
+      ],
+    );
+  }
+  async listReviewsForUser(walletAddress: string) {
+    const r = await this.pool.query(
+      "SELECT * FROM reviews WHERE subject_wallet=$1 ORDER BY created_at DESC",
+      [walletAddress],
+    );
+    return r.rows.map(reviewFrom);
+  }
 }
 
-async function rollback(client: PoolClient) { try { await client.query("ROLLBACK"); } catch { /* preserve original error */ } }
-function challengeFrom(r: QueryResultRow): Challenge { return {id:r.id,walletAddress:r.wallet_address,nonceHash:r.nonce_hash,message:r.message,expiresAt:new Date(r.expires_at),consumedAt:r.consumed_at?new Date(r.consumed_at):null}; }
-function sessionFrom(r: QueryResultRow): Session { return {id:r.id,walletAddress:r.wallet_address,tokenHash:r.token_hash,expiresAt:new Date(r.expires_at),revokedAt:r.revoked_at?new Date(r.revoked_at):null}; }
-function postFrom(r: QueryResultRow): Post { return {id:r.id,authorWallet:r.author_wallet,kind:r.kind,body:r.body,jobId:r.job_id,state:r.state,paymentReference:r.payment_reference,requiredLuna:BigInt(r.required_luna),paymentTxHash:r.payment_tx_hash,publishedAt:r.published_at?new Date(r.published_at):null,createdAt:new Date(r.created_at)}; }
-function jobFrom(r: QueryResultRow): Job { return {id:r.id,clientWallet:r.client_wallet,workerWallet:r.worker_wallet,title:r.title,description:r.description,budgetUsdtMicros:BigInt(r.budget_usdt_micros),deadline:new Date(r.deadline),arbiterAddress:r.arbiter_address,escrowJobId:r.escrow_job_id,escrowTxHash:r.escrow_tx_hash,state:r.state,createdAt:new Date(r.created_at)}; }
-function applicationFrom(r: QueryResultRow): Application { return {id:r.id,jobId:r.job_id,applicantWallet:r.applicant_wallet,message:r.message,status:r.status,createdAt:new Date(r.created_at)}; }
-function messageFrom(r: QueryResultRow): JobMessage { return {id:r.id,jobId:r.job_id,senderWallet:r.sender_wallet,body:r.body,createdAt:new Date(r.created_at)}; }
-function conversationFrom(r:QueryResultRow):Conversation { return {id:r.id,memberA:r.member_a,memberB:r.member_b,contextPostId:r.context_post_id,createdAt:new Date(r.created_at)}; }
-function directMessageFrom(r:QueryResultRow):DirectMessage { return {id:r.id,conversationId:r.conversation_id,senderWallet:r.sender_wallet,body:r.body,createdAt:new Date(r.created_at)}; }
-function userFrom(r:QueryResultRow):User { return {walletAddress:r.wallet_address,publicKey:r.public_key,displayName:r.display_name,bio:r.bio,profileRole:r.profile_role,professionalTitle:r.professional_title,skills:Array.isArray(r.skills)?r.skills:[],availability:r.availability??"not_open",workPreference:r.work_preference,location:r.location,onboardingCompletedAt:r.onboarding_completed_at?new Date(r.onboarding_completed_at):null,createdAt:new Date(r.created_at)}; }
-function reviewFrom(r:QueryResultRow):Review { return {id:r.id,jobId:r.job_id,reviewerWallet:r.reviewer_wallet,subjectWallet:r.subject_wallet,quality:r.quality,delivery:r.delivery,communication:r.communication,reliability:r.reliability,body:r.body,createdAt:new Date(r.created_at)}; }
+async function rollback(client: PoolClient) {
+  try {
+    await client.query("ROLLBACK");
+  } catch {
+    /* preserve original error */
+  }
+}
+function challengeFrom(r: QueryResultRow): Challenge {
+  return {
+    id: r.id,
+    walletAddress: r.wallet_address,
+    nonceHash: r.nonce_hash,
+    message: r.message,
+    expiresAt: new Date(r.expires_at),
+    consumedAt: r.consumed_at ? new Date(r.consumed_at) : null,
+  };
+}
+function sessionFrom(r: QueryResultRow): Session {
+  return {
+    id: r.id,
+    walletAddress: r.wallet_address,
+    tokenHash: r.token_hash,
+    expiresAt: new Date(r.expires_at),
+    revokedAt: r.revoked_at ? new Date(r.revoked_at) : null,
+  };
+}
+function postFrom(r: QueryResultRow): Post {
+  return {
+    id: r.id,
+    authorWallet: r.author_wallet,
+    kind: r.kind,
+    body: r.body,
+    jobId: r.job_id,
+    state: r.state,
+    paymentReference: r.payment_reference,
+    requiredLuna: BigInt(r.required_luna),
+    paymentTxHash: r.payment_tx_hash,
+    publishedAt: r.published_at ? new Date(r.published_at) : null,
+    createdAt: new Date(r.created_at),
+  };
+}
+function postReplyFrom(r: QueryResultRow): PostReply {
+  return {
+    id: r.id,
+    postId: r.post_id,
+    authorWallet: r.author_wallet,
+    body: r.body,
+    createdAt: new Date(r.created_at),
+  };
+}
+function jobFrom(r: QueryResultRow): Job {
+  return {
+    id: r.id,
+    clientWallet: r.client_wallet,
+    workerWallet: r.worker_wallet,
+    title: r.title,
+    description: r.description,
+    budgetUsdtMicros: BigInt(r.budget_usdt_micros),
+    deadline: new Date(r.deadline),
+    arbiterAddress: r.arbiter_address,
+    escrowJobId: r.escrow_job_id,
+    escrowTxHash: r.escrow_tx_hash,
+    state: r.state,
+    createdAt: new Date(r.created_at),
+  };
+}
+function applicationFrom(r: QueryResultRow): Application {
+  return {
+    id: r.id,
+    jobId: r.job_id,
+    applicantWallet: r.applicant_wallet,
+    message: r.message,
+    status: r.status,
+    createdAt: new Date(r.created_at),
+  };
+}
+function messageFrom(r: QueryResultRow): JobMessage {
+  return {
+    id: r.id,
+    jobId: r.job_id,
+    senderWallet: r.sender_wallet,
+    body: r.body,
+    createdAt: new Date(r.created_at),
+  };
+}
+function conversationFrom(r: QueryResultRow): Conversation {
+  return {
+    id: r.id,
+    memberA: r.member_a,
+    memberB: r.member_b,
+    contextPostId: r.context_post_id,
+    createdAt: new Date(r.created_at),
+  };
+}
+function directMessageFrom(r: QueryResultRow): DirectMessage {
+  return {
+    id: r.id,
+    conversationId: r.conversation_id,
+    senderWallet: r.sender_wallet,
+    body: r.body,
+    createdAt: new Date(r.created_at),
+  };
+}
+function userFrom(r: QueryResultRow): User {
+  return {
+    walletAddress: r.wallet_address,
+    publicKey: r.public_key,
+    displayName: r.display_name,
+    bio: r.bio,
+    profileRole: r.profile_role,
+    professionalTitle: r.professional_title,
+    skills: Array.isArray(r.skills) ? r.skills : [],
+    availability: r.availability ?? "not_open",
+    workPreference: r.work_preference,
+    location: r.location,
+    onboardingCompletedAt: r.onboarding_completed_at
+      ? new Date(r.onboarding_completed_at)
+      : null,
+    createdAt: new Date(r.created_at),
+  };
+}
+function reviewFrom(r: QueryResultRow): Review {
+  return {
+    id: r.id,
+    jobId: r.job_id,
+    reviewerWallet: r.reviewer_wallet,
+    subjectWallet: r.subject_wallet,
+    quality: r.quality,
+    delivery: r.delivery,
+    communication: r.communication,
+    reliability: r.reliability,
+    body: r.body,
+    createdAt: new Date(r.created_at),
+  };
+}

@@ -63,6 +63,24 @@ export interface Post {
   createdAt: Date;
 }
 
+export type PostEngagementType = "repost" | "appreciate" | "bookmark";
+
+export interface PostReply {
+  id: string;
+  postId: string;
+  authorWallet: string;
+  body: string;
+  createdAt: Date;
+}
+
+export interface PostEngagementSummary {
+  replies: number;
+  reposts: number;
+  appreciations: number;
+  bookmarks: number;
+  viewer: { reposted: boolean; appreciated: boolean; bookmarked: boolean };
+}
+
 export interface Job {
   id: string;
   clientWallet: string;
@@ -74,7 +92,16 @@ export interface Job {
   arbiterAddress: string | null;
   escrowJobId: string | null;
   escrowTxHash: string | null;
-  state: "open" | "funding" | "funded" | "submitted" | "approved" | "disputed" | "settled" | "refunded" | "cancelled";
+  state:
+    | "open"
+    | "funding"
+    | "funded"
+    | "submitted"
+    | "approved"
+    | "disputed"
+    | "settled"
+    | "refunded"
+    | "cancelled";
   createdAt: Date;
 }
 

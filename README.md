@@ -92,6 +92,8 @@ Brand files live in `web/public/brand/`. The mark is a continuous **proof path**
 | `POST` | `/v1/posts/intents` | Create a draft and receive exact NIM payment fields |
 | `POST` | `/v1/posts/:id/publish` | Verify the NIM transaction and publish |
 | `GET` | `/v1/posts/:id` | Read a published post |
+| `GET/POST` | `/v1/posts/:id/replies` | Read or add persistent post replies |
+| `PUT/DELETE` | `/v1/posts/:id/engagement/:type` | Persist repost, appreciation, or bookmark state |
 | `POST` | `/v1/jobs` | Open a USDT-budgeted job |
 | `GET` | `/v1/jobs/:id` | Read job state |
 | `POST` | `/v1/jobs/:id/applications` | Apply to an open job |

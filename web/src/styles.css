@@ -2003,6 +2003,56 @@ a {
   margin-top: 18px;
 }
 
+.post-skeleton {
+  min-height: 178px;
+  padding: 20px 0;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.post-skeleton > span,
+.post-skeleton i {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eceae4 25%, #f8f7f3 50%, #eceae4 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shift 1.2s ease-in-out infinite;
+}
+.post-skeleton > span {
+  width: 44px;
+  height: 44px;
+}
+.post-skeleton > div {
+  padding-top: 4px;
+}
+.post-skeleton i {
+  height: 10px;
+  margin-bottom: 12px;
+}
+.post-skeleton i:first-child {
+  width: 34%;
+}
+.post-skeleton i:nth-child(2) {
+  width: 92%;
+}
+.post-skeleton i:nth-child(3) {
+  width: 68%;
+}
+.engagement button.is-appreciated svg {
+  animation: reaction-pop 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.35);
+}
+@keyframes skeleton-shift {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes reaction-pop {
+  50% {
+    transform: scale(1.3);
+  }
+}
+
 .work-actions {
   margin: 0 0 14px 54px;
   padding: 13px;

@@ -16,13 +16,23 @@ export interface FeedPost {
   skills?: string[];
   proofLabel?: string;
   preview?: boolean;
+  engagement: PostEngagement;
+}
+
+export interface PostEngagement {
+  replies: number;
+  reposts: number;
+  appreciations: number;
+  bookmarks: number;
+  viewer: { reposted: boolean; appreciated: boolean; bookmarked: boolean };
 }
 
 export interface PostReply {
   id: string;
   postId: string;
-  authorName: string;
-  authorRole: string;
+  authorWallet: string;
+  authorName?: string;
+  authorRole?: string;
   body: string;
   createdAt: string;
   preview?: boolean;

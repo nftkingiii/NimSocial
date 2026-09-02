@@ -3,7 +3,9 @@ import type {
   DirectMessage,
   FeedPost,
   PaymentIntent,
+  PostEngagement,
   PostKind,
+  PostReply,
   ProfessionalProfile,
   ProfileInput,
 } from "./types";
@@ -174,4 +176,29 @@ export async function sendDirectMessage(
       { method: "POST", body: JSON.stringify({ body }) },
     )
   ).message;
+}
+export async function fetchPostReplies(postId: string): Promise<PostReply[]> {
+  return (await request<{ items: PostReply[] }>(`/v1/posts/${postId}/replies`))
+    .items;
+}
+export async function createPostReply(
+  postId: string,
+  body: string,
+): Promise<{ reply: PostReply; engagement: PostEngagement }> {
+  return request(`/v1/posts/${postId}/replies`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+export async function setPostEngagement(
+  postId: string,
+  type: "repost" | "appreciate" | "bookmark",
+  active: boolean,
+): Promise<PostEngagement> {
+  return (
+    await request<{ engagement: PostEngagement }>(
+      `/v1/posts/${postId}/engagement/${type}`,
+      { method: active ? "PUT" : "DELETE" },
+    )
+  ).engagement;
 }
