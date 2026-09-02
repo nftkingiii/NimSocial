@@ -358,6 +358,35 @@ a {
   font-size: 11px;
   font-weight: 750;
 }
+
+.wallet-card__disconnect {
+  margin-left: auto;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.connect-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--canvas);
+}
+
+.connect-gate__card {
+  width: min(100%, 460px);
+  padding: clamp(28px, 7vw, 56px);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.connect-gate__card h1 { margin: 18px 0 10px; }
+.connect-gate__card p { color: var(--ink-muted); line-height: 1.6; margin-bottom: 24px; }
+.connect-gate__card small { display: block; color: var(--ink-muted); margin-top: 16px; line-height: 1.5; }
 .wallet-card--connected {
   min-height: 68px;
   grid-template-columns: 34px 1fr 8px;

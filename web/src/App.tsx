@@ -36,6 +36,7 @@ import { ProfileCard } from "./components/ProfileCard";
 import {
   createConversation,
   createPostReply,
+  deleteSession,
   createPostIntent,
   fetchConversations,
   fetchDirectMessages,
@@ -161,6 +162,25 @@ export default function App() {
       setWalletPending(false);
     }
   }, [walletPending]);
+
+  const disconnectWallet = useCallback(async () => {
+    try {
+      await deleteSession();
+    } catch {
+      // Clear the local wallet even if the session has already expired.
+    }
+    providerRef.current?.disconnect();
+    providerRef.current = null;
+    setWallet(null);
+    setActiveProfile(null);
+    setConversations([]);
+    setActiveConversationId(null);
+    setNotice({ tone: "info", message: "Wallet disconnected." });
+  }, []);
+
+  if (!wallet) {
+    return <ConnectGate pending={walletPending} onConnect={connectWallet} />;
+  }
 
   const handleNavigation = (next: AppSection) => {
     setMobileMenuOpen(false);
@@ -695,6 +715,7 @@ export default function App() {
           wallet={wallet}
           pending={walletPending}
           onConnect={connectWallet}
+          onDisconnect={disconnectWallet}
         />
       </aside>
       <main id="main-content" className="main-content">
@@ -769,6 +790,7 @@ export default function App() {
             wallet={wallet}
             pending={walletPending}
             onConnect={connectWallet}
+            onDisconnect={disconnectWallet}
             onProfile={() => handleNavigation("profile")}
             onCompose={() => setComposeOpen(true)}
           />
@@ -933,10 +955,12 @@ function WalletCard({
   wallet,
   pending,
   onConnect,
+  onDisconnect,
 }: {
   wallet: WalletIdentity | null;
   pending: boolean;
   onConnect: () => void;
+  onDisconnect: () => void;
 }) {
   if (wallet)
     return (
@@ -946,6 +970,9 @@ function WalletCard({
           <span>Connected</span>
           <strong>{wallet.shortAddress}</strong>
         </div>
+        <button className="wallet-card__disconnect" type="button" onClick={onDisconnect}>
+          Disconnect
+        </button>
         <span className="connection-dot" />
       </div>
     );
@@ -962,6 +989,23 @@ function WalletCard({
         {pending ? "Waiting…" : "Connect"}
       </button>
     </div>
+  );
+}
+
+function ConnectGate({ pending, onConnect }: { pending: boolean; onConnect: () => void }) {
+  return (
+    <main className="connect-gate">
+      <div className="connect-gate__card">
+        <div className="wallet-screen-card__icon"><WalletCards /></div>
+        <span className="eyebrow">Nimiq Pay</span>
+        <h1>Bring your work wallet.</h1>
+        <p>Connect with Nimiq Pay to enter NimSocial, publish work, and message people securely.</p>
+        <button className="button button--primary" type="button" disabled={pending} onClick={onConnect}>
+          {pending ? "Waiting for Nimiq Pay…" : "Connect with Nimiq Pay"}
+        </button>
+        <small>Your keys stay in Nimiq Pay. NimSocial only receives a signed session.</small>
+      </div>
+    </main>
   );
 }
 
@@ -1502,12 +1546,14 @@ function WalletScreen({
   onConnect,
   onProfile,
   onCompose,
+  onDisconnect,
 }: {
   wallet: WalletIdentity | null;
   pending: boolean;
   onConnect: () => void;
   onProfile: () => void;
   onCompose: () => void;
+  onDisconnect: () => void;
 }) {
   return (
     <>
@@ -1546,6 +1592,9 @@ function WalletScreen({
               onClick={onProfile}
             >
               View profile
+            </button>
+            <button className="button button--quiet" type="button" onClick={onDisconnect}>
+              Disconnect wallet
             </button>
           </div>
         ) : (

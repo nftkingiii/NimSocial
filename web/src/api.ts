@@ -73,6 +73,10 @@ export async function createSession(input: {
   );
 }
 
+export async function deleteSession(): Promise<void> {
+  await request<void>("/v1/auth/session", { method: "DELETE" });
+}
+
 export async function createPostIntent(input: {
   kind: PostKind;
   body: string;
