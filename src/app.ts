@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import { z, ZodError } from "zod";
 import { normalizeNimiqAddress, randomToken, sha256Hex, verifyNimiqMessage } from "./auth/crypto.js";
 import type { AppConfig } from "./config/env.js";
-import type { Application, Job, JobMessage, Post, PostKind, Review, Session, User } from "./domain/models.js";
+import type { Application, Conversation, DirectMessage, Job, JobMessage, Post, PostKind, Review, Session, User } from "./domain/models.js";
 import type { PaymentVerifier } from "./ports/payment-verifier.js";
 import type { Store } from "./ports/store.js";
 
@@ -22,6 +22,7 @@ const publishSchema = z.object({ txHash: z.string().regex(/^[a-fA-F0-9]{64}$/) }
 const jobSchema = z.object({ title: z.string().trim().min(3).max(120), description: z.string().trim().min(10).max(5000), budgetUsdtMicros: z.string().regex(/^\d{1,18}$/), deadline: z.coerce.date() });
 const applicationSchema = z.object({ message: z.string().trim().min(3).max(2000) });
 const messageSchema = z.object({ body: z.string().trim().min(1).max(2000) });
+const conversationSchema = z.object({ participantWallet:z.string().min(30).max(50), postId:z.string().min(8).max(64).optional() });
 const profileSchema = z.object({
   displayName:z.string().trim().min(2).max(60),
   bio:z.string().trim().max(280).default(""),
@@ -223,6 +224,25 @@ export async function buildApp(deps: AppDependencies) {
   app.get("/v1/jobs/:id/messages", async (request) => { const wallet=await authenticate(request); const {id}=idParams.parse(request.params); await assertJobParty(deps.store,id,wallet); return {items:await deps.store.listMessages(id)}; });
   app.post("/v1/jobs/:id/messages", async (request, reply) => { const wallet=await authenticate(request); const {id}=idParams.parse(request.params); await assertJobParty(deps.store,id,wallet); const input=messageSchema.parse(request.body); const message:JobMessage={id:nanoid(),jobId:id,senderWallet:wallet,body:input.body,createdAt:now()}; await deps.store.createMessage(message); return reply.code(201).send({message}); });
 
+  app.get("/v1/conversations", async (request) => {
+    const wallet=await authenticate(request); const items=await deps.store.listConversations(wallet);
+    return {items:items.map(({conversation,lastMessage})=>conversationPayload(conversation,wallet,lastMessage))};
+  });
+
+  app.post("/v1/conversations", {config:{rateLimit:{max:20,timeWindow:"1 minute"}}}, async (request,reply) => {
+    const wallet=await authenticate(request); const input=conversationSchema.parse(request.body); const participant=parseNimiqAddress(input.participantWallet);
+    if(participant===wallet) throw httpError(400,"You cannot message yourself");
+    if(!await deps.store.findUser(participant)) throw httpError(404,"Profile not found");
+    if(input.postId){ const post=await deps.store.findPost(input.postId); if(!post||post.state!=="published") throw httpError(404,"Post not found"); if(post.authorWallet!==wallet&&post.authorWallet!==participant) throw httpError(403,"The post must belong to a conversation participant"); }
+    const [memberA,memberB]=[wallet,participant].sort() as [string,string]; const existing=await deps.store.findDirectConversation(memberA,memberB,input.postId??null);
+    const conversation:Conversation=existing??{id:nanoid(),memberA,memberB,contextPostId:input.postId??null,createdAt:now()};
+    if(!existing) await deps.store.createConversation(conversation);
+    return reply.code(201).send({conversation:conversationPayload(conversation,wallet,null)});
+  });
+
+  app.get("/v1/conversations/:id/messages", async (request) => { const wallet=await authenticate(request); const {id}=idParams.parse(request.params); const conversation=await assertConversationParty(deps.store,id,wallet); return {conversation:conversationPayload(conversation,wallet,null),items:(await deps.store.listDirectMessages(id)).map(publicDirectMessage)}; });
+  app.post("/v1/conversations/:id/messages", {config:{rateLimit:{max:30,timeWindow:"1 minute"}}}, async (request,reply) => { const wallet=await authenticate(request); const {id}=idParams.parse(request.params); await assertConversationParty(deps.store,id,wallet); const input=messageSchema.parse(request.body); const message:DirectMessage={id:nanoid(),conversationId:id,senderWallet:wallet,body:input.body,createdAt:now()}; await deps.store.createDirectMessage(message); return reply.code(201).send({message:publicDirectMessage(message)}); });
+
   app.post("/v1/jobs/:id/reviews", async (request,reply) => {
     const wallet=await authenticate(request); const {id}=idParams.parse(request.params); const input=reviewSchema.parse(request.body); const job=await deps.store.findJob(id);
     if(!job) throw httpError(404,"Job not found"); if(job.clientWallet!==wallet) throw httpError(403,"Only the client can review the worker"); if(job.state!=="settled") throw httpError(409,"Reviews unlock after settlement"); if(!job.workerWallet) throw httpError(409,"Job has no accepted worker");
@@ -236,6 +256,8 @@ function feeFor(kind: PostKind, config: AppConfig) { return kind === "update" ||
 function publicPost(post: Post) { return {...post,requiredLuna:post.requiredLuna.toString(),createdAt:post.createdAt.toISOString(),publishedAt:post.publishedAt?.toISOString()??null}; }
 function publicJob(job: Job) { return {...job,budgetUsdtMicros:job.budgetUsdtMicros.toString(),deadline:job.deadline.toISOString(),createdAt:job.createdAt.toISOString()}; }
 function publicReview(review:Review) { return {...review,createdAt:review.createdAt.toISOString()}; }
+function publicDirectMessage(message:DirectMessage) { return {...message,createdAt:message.createdAt.toISOString()}; }
+function conversationPayload(conversation:Conversation,viewer:string,lastMessage:DirectMessage|null) { return {id:conversation.id,participantWallet:conversation.memberA===viewer?conversation.memberB:conversation.memberA,contextPostId:conversation.contextPostId,createdAt:conversation.createdAt.toISOString(),lastMessage:lastMessage?publicDirectMessage(lastMessage):null}; }
 async function profilePayload(store:Store,user:User,viewer?:string) {
   const [counts,reviews,following]=await Promise.all([store.countFollowers(user.walletAddress),store.listReviewsForUser(user.walletAddress),viewer?store.isFollowing(viewer,user.walletAddress):false]);
   const average=(key:"quality"|"delivery"|"communication"|"reliability")=>reviews.length?Number((reviews.reduce((sum,review)=>sum+review[key],0)/reviews.length).toFixed(1)):null;
@@ -244,5 +266,6 @@ async function profilePayload(store:Store,user:User,viewer?:string) {
   return {...user,publicKey:undefined,createdAt:user.createdAt.toISOString(),onboardingCompletedAt:user.onboardingCompletedAt?.toISOString()??null,...counts,isFollowing:following,reputation:{score,reviewCount:reviews.length,confidence:Math.min(100,Math.round(reviews.length/5*100)),dimensions,credentialTxHash:null}};
 }
 async function assertJobParty(store:Store,id:string,wallet:string) { const job=await store.findJob(id); if(!job) throw httpError(404,"Job not found"); if(job.clientWallet!==wallet&&job.workerWallet!==wallet) throw httpError(403,"Only job participants can access messages"); }
+async function assertConversationParty(store:Store,id:string,wallet:string) { const conversation=await store.findConversation(id); if(!conversation) throw httpError(404,"Conversation not found"); if(conversation.memberA!==wallet&&conversation.memberB!==wallet) throw httpError(403,"Only conversation participants can access messages"); return conversation; }
 function httpError(statusCode:number,message:string) { return Object.assign(new Error(message),{statusCode}); }
 function parseNimiqAddress(value:string) { try { return normalizeNimiqAddress(value); } catch { throw httpError(400,"Invalid Nimiq address"); } }

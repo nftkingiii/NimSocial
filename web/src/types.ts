@@ -46,7 +46,12 @@ export interface ReputationSummary {
   score: number | null;
   reviewCount: number;
   confidence: number;
-  dimensions: { quality:number|null; delivery:number|null; communication:number|null; reliability:number|null };
+  dimensions: {
+    quality: number | null;
+    delivery: number | null;
+    communication: number | null;
+    reliability: number | null;
+  };
   credentialTxHash: string | null;
 }
 
@@ -69,18 +74,45 @@ export interface ProfessionalProfile {
   preview?: boolean;
   completedJobs?: number;
   earned?: string;
-  workSamples?: Array<{title:string;outcome:string;skills:string[]}>;
+  workSamples?: Array<{ title: string; outcome: string; skills: string[] }>;
 }
 
 export interface ProfileInput {
-  displayName:string;
-  bio:string;
-  profileRole:ProfileRole;
-  professionalTitle:string;
-  skills:string[];
-  availability:Availability;
-  workPreference:WorkPreference;
-  location:string;
+  displayName: string;
+  bio: string;
+  profileRole: ProfileRole;
+  professionalTitle: string;
+  skills: string[];
+  availability: Availability;
+  workPreference: WorkPreference;
+  location: string;
 }
 
-export type AppSection = "feed" | "thread" | "explore" | "post" | "jobs" | "wallet" | "notifications" | "profile";
+export interface DirectMessage {
+  id: string;
+  conversationId: string;
+  senderWallet: string;
+  body: string;
+  createdAt: string;
+  preview?: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  participantWallet: string;
+  contextPostId: string | null;
+  createdAt: string;
+  lastMessage: DirectMessage | null;
+  preview?: boolean;
+}
+
+export type AppSection =
+  | "feed"
+  | "thread"
+  | "explore"
+  | "post"
+  | "jobs"
+  | "messages"
+  | "wallet"
+  | "notifications"
+  | "profile";

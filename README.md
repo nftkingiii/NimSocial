@@ -97,6 +97,8 @@ Brand files live in `web/public/brand/`. The mark is a continuous **proof path**
 | `POST` | `/v1/jobs/:id/applications` | Apply to an open job |
 | `POST` | `/v1/jobs/:id/applications/:applicationId/accept` | Select a worker |
 | `GET/POST` | `/v1/jobs/:id/messages` | Participant-only job messages |
+| `GET/POST` | `/v1/conversations` | List or start authenticated direct conversations |
+| `GET/POST` | `/v1/conversations/:id/messages` | Participant-only direct messages, optionally linked to a public request |
 | `POST` | `/v1/jobs/:id/reviews` | Rate an accepted worker after the job is settled |
 
 Authenticated routes accept `Authorization: Bearer <token>` or the HttpOnly session cookie. Amounts are decimal strings in the API (`luna` for NIM, six-decimal micros for USDT) to avoid JavaScript integer loss.

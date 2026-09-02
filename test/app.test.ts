@@ -97,6 +97,26 @@ describe("NimSocial API", () => {
     expect((await app.inject({method:"GET",url:`/v1/jobs/${job.id}/messages`,headers:auth(stranger.token)})).statusCode).toBe(403);
   });
 
+  it("keeps request-linked direct messages private to both participants", async () => {
+    const hirer=await login(); const worker=await login(); const stranger=await login(); const auth=(token:string)=>({authorization:`Bearer ${token}`});
+    const intent=(await app.inject({method:"POST",url:"/v1/posts/intents",headers:auth(hirer.token),payload:{kind:"request",body:"Need a mobile product designer"}})).json();
+    await app.inject({method:"POST",url:`/v1/posts/${intent.post.id}/publish`,headers:auth(hirer.token),payload:{txHash:"d".repeat(64)}});
+    const created=await app.inject({method:"POST",url:"/v1/conversations",headers:auth(worker.token),payload:{participantWallet:hirer.walletAddress,postId:intent.post.id}});
+    expect(created.statusCode).toBe(201); const conversation=created.json().conversation;
+    expect(conversation).toMatchObject({participantWallet:hirer.walletAddress,contextPostId:intent.post.id});
+    expect((await app.inject({method:"POST",url:`/v1/conversations/${conversation.id}/messages`,headers:auth(worker.token),payload:{body:"Interested — I can share relevant work."}})).statusCode).toBe(201);
+    expect((await app.inject({method:"GET",url:`/v1/conversations/${conversation.id}/messages`,headers:auth(hirer.token)})).json().items).toHaveLength(1);
+    expect((await app.inject({method:"GET",url:`/v1/conversations/${conversation.id}/messages`,headers:auth(stranger.token)})).statusCode).toBe(403);
+  });
+
+  it("reuses a direct conversation and blocks self-messaging", async () => {
+    const one=await login(); const two=await login(); const headers={authorization:`Bearer ${one.token}`};
+    const first=(await app.inject({method:"POST",url:"/v1/conversations",headers,payload:{participantWallet:two.walletAddress}})).json().conversation;
+    const second=(await app.inject({method:"POST",url:"/v1/conversations",headers,payload:{participantWallet:two.walletAddress}})).json().conversation;
+    expect(second.id).toBe(first.id);
+    expect((await app.inject({method:"POST",url:"/v1/conversations",headers,payload:{participantWallet:one.walletAddress}})).statusCode).toBe(400);
+  });
+
   it("creates a discoverable role-based profile with bounded preferences", async () => {
     const user=await login(); const headers={authorization:`Bearer ${user.token}`};
     const updated=await app.inject({method:"PATCH",url:"/v1/me/profile",headers,payload:{displayName:"Tomi Ade",bio:"I build wallet-native interfaces.",profileRole:"worker",professionalTitle:"Frontend engineer",skills:["React","Nimiq","react"],availability:"open",workPreference:"remote",location:"Lagos"}});

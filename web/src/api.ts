@@ -1,9 +1,20 @@
-import type { FeedPost, PaymentIntent, PostKind, ProfessionalProfile, ProfileInput } from "./types";
+import type {
+  Conversation,
+  DirectMessage,
+  FeedPost,
+  PaymentIntent,
+  PostKind,
+  ProfessionalProfile,
+  ProfileInput,
+} from "./types";
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
     super(message);
   }
 }
@@ -15,8 +26,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { "content-type": "application/json", ...options?.headers },
   });
   if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { message?: string } | null;
-    throw new ApiError(payload?.message ?? "The request could not be completed.", response.status);
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new ApiError(
+      payload?.message ?? "The request could not be completed.",
+      response.status,
+    );
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -28,7 +44,12 @@ export async function fetchFeed(): Promise<FeedPost[]> {
 }
 
 export async function createChallenge(walletAddress: string) {
-  return request<{ challengeId: string; nonce: string; message: string; expiresAt: string }>("/v1/auth/challenges", {
+  return request<{
+    challengeId: string;
+    nonce: string;
+    message: string;
+    expiresAt: string;
+  }>("/v1/auth/challenges", {
     method: "POST",
     body: JSON.stringify({ walletAddress }),
   });
@@ -41,27 +62,116 @@ export async function createSession(input: {
   publicKey: string;
   signature: string;
 }) {
-  return request<{ walletAddress: string; expiresAt: string }>("/v1/auth/sessions", {
+  return request<{ walletAddress: string; expiresAt: string }>(
+    "/v1/auth/sessions",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export async function createPostIntent(input: {
+  kind: PostKind;
+  body: string;
+  jobId?: string;
+}): Promise<PaymentIntent> {
+  return request<PaymentIntent>("/v1/posts/intents", {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
-export async function createPostIntent(input: { kind: PostKind; body: string; jobId?: string }): Promise<PaymentIntent> {
-  return request<PaymentIntent>("/v1/posts/intents", { method: "POST", body: JSON.stringify(input) });
-}
-
-export async function publishPost(postId: string, txHash: string): Promise<FeedPost> {
-  const response = await request<{ post: FeedPost }>(`/v1/posts/${postId}/publish`, {
-    method: "POST",
-    body: JSON.stringify({ txHash }),
-  });
+export async function publishPost(
+  postId: string,
+  txHash: string,
+): Promise<FeedPost> {
+  const response = await request<{ post: FeedPost }>(
+    `/v1/posts/${postId}/publish`,
+    {
+      method: "POST",
+      body: JSON.stringify({ txHash }),
+    },
+  );
   return response.post;
 }
 
-export async function fetchMyProfile():Promise<ProfessionalProfile> { return (await request<{profile:ProfessionalProfile}>("/v1/me/profile")).profile; }
-export async function saveMyProfile(input:ProfileInput):Promise<ProfessionalProfile> { return (await request<{profile:ProfessionalProfile}>("/v1/me/profile",{method:"PATCH",body:JSON.stringify(input)})).profile; }
-export async function fetchProfiles():Promise<ProfessionalProfile[]> { return (await request<{items:ProfessionalProfile[]}>("/v1/profiles?limit=24")).items; }
-export async function fetchProfile(walletAddress:string):Promise<ProfessionalProfile> { return (await request<{profile:ProfessionalProfile}>(`/v1/profiles/${encodeURIComponent(walletAddress)}`)).profile; }
-export async function fetchProfilePosts(walletAddress:string):Promise<FeedPost[]> { return (await request<{items:FeedPost[]}>(`/v1/profiles/${encodeURIComponent(walletAddress)}/posts`)).items; }
-export async function setProfileFollow(walletAddress:string,following:boolean):Promise<void> { return request(`/v1/profiles/${encodeURIComponent(walletAddress)}/follow`,{method:following?"POST":"DELETE"}); }
+export async function fetchMyProfile(): Promise<ProfessionalProfile> {
+  return (await request<{ profile: ProfessionalProfile }>("/v1/me/profile"))
+    .profile;
+}
+export async function saveMyProfile(
+  input: ProfileInput,
+): Promise<ProfessionalProfile> {
+  return (
+    await request<{ profile: ProfessionalProfile }>("/v1/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    })
+  ).profile;
+}
+export async function fetchProfiles(): Promise<ProfessionalProfile[]> {
+  return (
+    await request<{ items: ProfessionalProfile[] }>("/v1/profiles?limit=24")
+  ).items;
+}
+export async function fetchProfile(
+  walletAddress: string,
+): Promise<ProfessionalProfile> {
+  return (
+    await request<{ profile: ProfessionalProfile }>(
+      `/v1/profiles/${encodeURIComponent(walletAddress)}`,
+    )
+  ).profile;
+}
+export async function fetchProfilePosts(
+  walletAddress: string,
+): Promise<FeedPost[]> {
+  return (
+    await request<{ items: FeedPost[] }>(
+      `/v1/profiles/${encodeURIComponent(walletAddress)}/posts`,
+    )
+  ).items;
+}
+export async function setProfileFollow(
+  walletAddress: string,
+  following: boolean,
+): Promise<void> {
+  return request(`/v1/profiles/${encodeURIComponent(walletAddress)}/follow`, {
+    method: following ? "POST" : "DELETE",
+  });
+}
+export async function fetchConversations(): Promise<Conversation[]> {
+  return (await request<{ items: Conversation[] }>("/v1/conversations")).items;
+}
+export async function createConversation(
+  participantWallet: string,
+  postId?: string,
+): Promise<Conversation> {
+  return (
+    await request<{ conversation: Conversation }>("/v1/conversations", {
+      method: "POST",
+      body: JSON.stringify({ participantWallet, postId }),
+    })
+  ).conversation;
+}
+export async function fetchDirectMessages(
+  conversationId: string,
+): Promise<DirectMessage[]> {
+  return (
+    await request<{ items: DirectMessage[] }>(
+      `/v1/conversations/${conversationId}/messages`,
+    )
+  ).items;
+}
+export async function sendDirectMessage(
+  conversationId: string,
+  body: string,
+): Promise<DirectMessage> {
+  return (
+    await request<{ message: DirectMessage }>(
+      `/v1/conversations/${conversationId}/messages`,
+      { method: "POST", body: JSON.stringify({ body }) },
+    )
+  ).message;
+}

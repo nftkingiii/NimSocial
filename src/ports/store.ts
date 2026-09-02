@@ -1,4 +1,4 @@
-import type { Application, Challenge, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
+import type { Application, Challenge, Conversation, DirectMessage, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
 
 export interface Store {
   createChallenge(challenge: Challenge): Promise<void>;
@@ -26,6 +26,12 @@ export interface Store {
   acceptApplication(jobId: string, applicationId: string): Promise<Job | null>;
   createMessage(message: JobMessage): Promise<void>;
   listMessages(jobId: string): Promise<JobMessage[]>;
+  createConversation(conversation: Conversation): Promise<void>;
+  findConversation(id: string): Promise<Conversation | null>;
+  findDirectConversation(memberA: string, memberB: string, contextPostId: string | null): Promise<Conversation | null>;
+  listConversations(walletAddress: string): Promise<Array<{conversation:Conversation;lastMessage:DirectMessage|null}>>;
+  createDirectMessage(message: DirectMessage): Promise<void>;
+  listDirectMessages(conversationId: string): Promise<DirectMessage[]>;
   createReview(review: Review): Promise<void>;
   listReviewsForUser(walletAddress: string): Promise<Review[]>;
 }

@@ -1,5 +1,5 @@
 import type { Pool, PoolClient, QueryResultRow } from "pg";
-import type { Application, Challenge, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
+import type { Application, Challenge, Conversation, DirectMessage, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
 import type { Store } from "../ports/store.js";
 
 export class PostgresStore implements Store {
@@ -67,6 +67,12 @@ export class PostgresStore implements Store {
   }
   async createMessage(m: JobMessage) { await this.pool.query("INSERT INTO job_messages(id,job_id,sender_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",[m.id,m.jobId,m.senderWallet,m.body,m.createdAt]); }
   async listMessages(jobId: string) { const r=await this.pool.query("SELECT * FROM job_messages WHERE job_id=$1 ORDER BY created_at ASC,id ASC",[jobId]); return r.rows.map(messageFrom); }
+  async createConversation(c:Conversation) { await this.pool.query("INSERT INTO conversations(id,member_a,member_b,context_post_id,created_at) VALUES($1,$2,$3,$4,$5)",[c.id,c.memberA,c.memberB,c.contextPostId,c.createdAt]); }
+  async findConversation(id:string) { const r=await this.pool.query("SELECT * FROM conversations WHERE id=$1",[id]); return r.rows[0]?conversationFrom(r.rows[0]):null; }
+  async findDirectConversation(memberA:string,memberB:string,contextPostId:string|null) { const r=await this.pool.query("SELECT * FROM conversations WHERE member_a=$1 AND member_b=$2 AND context_post_id IS NOT DISTINCT FROM $3",[memberA,memberB,contextPostId]); return r.rows[0]?conversationFrom(r.rows[0]):null; }
+  async listConversations(walletAddress:string) { const r=await this.pool.query("SELECT c.*,m.id AS last_id,m.sender_wallet AS last_sender_wallet,m.body AS last_body,m.created_at AS last_created_at FROM conversations c LEFT JOIN LATERAL (SELECT * FROM direct_messages WHERE conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1) m ON true WHERE c.member_a=$1 OR c.member_b=$1 ORDER BY COALESCE(m.created_at,c.created_at) DESC",[walletAddress]); return r.rows.map((row)=>({conversation:conversationFrom(row),lastMessage:row.last_id?{id:row.last_id,conversationId:row.id,senderWallet:row.last_sender_wallet,body:row.last_body,createdAt:new Date(row.last_created_at)}:null})); }
+  async createDirectMessage(m:DirectMessage) { await this.pool.query("INSERT INTO direct_messages(id,conversation_id,sender_wallet,body,created_at) VALUES($1,$2,$3,$4,$5)",[m.id,m.conversationId,m.senderWallet,m.body,m.createdAt]); }
+  async listDirectMessages(conversationId:string) { const r=await this.pool.query("SELECT * FROM direct_messages WHERE conversation_id=$1 ORDER BY created_at ASC,id ASC",[conversationId]); return r.rows.map(directMessageFrom); }
   async createReview(review:Review) { await this.pool.query("INSERT INTO reviews(id,job_id,reviewer_wallet,subject_wallet,quality,delivery,communication,reliability,body,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",[review.id,review.jobId,review.reviewerWallet,review.subjectWallet,review.quality,review.delivery,review.communication,review.reliability,review.body,review.createdAt]); }
   async listReviewsForUser(walletAddress:string) { const r=await this.pool.query("SELECT * FROM reviews WHERE subject_wallet=$1 ORDER BY created_at DESC",[walletAddress]); return r.rows.map(reviewFrom); }
 }
@@ -78,5 +84,7 @@ function postFrom(r: QueryResultRow): Post { return {id:r.id,authorWallet:r.auth
 function jobFrom(r: QueryResultRow): Job { return {id:r.id,clientWallet:r.client_wallet,workerWallet:r.worker_wallet,title:r.title,description:r.description,budgetUsdtMicros:BigInt(r.budget_usdt_micros),deadline:new Date(r.deadline),arbiterAddress:r.arbiter_address,escrowJobId:r.escrow_job_id,escrowTxHash:r.escrow_tx_hash,state:r.state,createdAt:new Date(r.created_at)}; }
 function applicationFrom(r: QueryResultRow): Application { return {id:r.id,jobId:r.job_id,applicantWallet:r.applicant_wallet,message:r.message,status:r.status,createdAt:new Date(r.created_at)}; }
 function messageFrom(r: QueryResultRow): JobMessage { return {id:r.id,jobId:r.job_id,senderWallet:r.sender_wallet,body:r.body,createdAt:new Date(r.created_at)}; }
+function conversationFrom(r:QueryResultRow):Conversation { return {id:r.id,memberA:r.member_a,memberB:r.member_b,contextPostId:r.context_post_id,createdAt:new Date(r.created_at)}; }
+function directMessageFrom(r:QueryResultRow):DirectMessage { return {id:r.id,conversationId:r.conversation_id,senderWallet:r.sender_wallet,body:r.body,createdAt:new Date(r.created_at)}; }
 function userFrom(r:QueryResultRow):User { return {walletAddress:r.wallet_address,publicKey:r.public_key,displayName:r.display_name,bio:r.bio,profileRole:r.profile_role,professionalTitle:r.professional_title,skills:Array.isArray(r.skills)?r.skills:[],availability:r.availability??"not_open",workPreference:r.work_preference,location:r.location,onboardingCompletedAt:r.onboarding_completed_at?new Date(r.onboarding_completed_at):null,createdAt:new Date(r.created_at)}; }
 function reviewFrom(r:QueryResultRow):Review { return {id:r.id,jobId:r.job_id,reviewerWallet:r.reviewer_wallet,subjectWallet:r.subject_wallet,quality:r.quality,delivery:r.delivery,communication:r.communication,reliability:r.reliability,body:r.body,createdAt:new Date(r.created_at)}; }

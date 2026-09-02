@@ -1,4 +1,4 @@
-import type { Application, Challenge, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
+import type { Application, Challenge, Conversation, DirectMessage, Job, JobMessage, Post, Review, Session, User } from "../domain/models.js";
 import type { Store } from "../ports/store.js";
 
 export class MemoryStore implements Store {
@@ -9,6 +9,8 @@ export class MemoryStore implements Store {
   readonly jobs = new Map<string, Job>();
   readonly applications = new Map<string, Application>();
   readonly messages = new Map<string, JobMessage>();
+  readonly conversations = new Map<string, Conversation>();
+  readonly directMessages = new Map<string, DirectMessage>();
   readonly follows = new Set<string>();
   readonly reviews = new Map<string, Review>();
 
@@ -70,6 +72,12 @@ export class MemoryStore implements Store {
   }
   async createMessage(message: JobMessage) { this.messages.set(message.id, message); }
   async listMessages(jobId: string) { return [...this.messages.values()].filter((message) => message.jobId === jobId).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()); }
+  async createConversation(conversation:Conversation) { this.conversations.set(conversation.id,conversation); }
+  async findConversation(id:string) { return this.conversations.get(id) ?? null; }
+  async findDirectConversation(memberA:string,memberB:string,contextPostId:string|null) { return [...this.conversations.values()].find((item)=>item.memberA===memberA&&item.memberB===memberB&&item.contextPostId===contextPostId) ?? null; }
+  async listConversations(walletAddress:string) { return [...this.conversations.values()].filter((item)=>item.memberA===walletAddress||item.memberB===walletAddress).map((conversation)=>({conversation,lastMessage:[...this.directMessages.values()].filter((message)=>message.conversationId===conversation.id).sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime())[0]??null})).sort((a,b)=>(b.lastMessage?.createdAt??b.conversation.createdAt).getTime()-(a.lastMessage?.createdAt??a.conversation.createdAt).getTime()); }
+  async createDirectMessage(message:DirectMessage) { this.directMessages.set(message.id,message); }
+  async listDirectMessages(conversationId:string) { return [...this.directMessages.values()].filter((message)=>message.conversationId===conversationId).sort((a,b)=>a.createdAt.getTime()-b.createdAt.getTime()); }
   async createReview(review:Review) { if([...this.reviews.values()].some((item)=>item.jobId===review.jobId&&item.reviewerWallet===review.reviewerWallet&&item.subjectWallet===review.subjectWallet)) throw Object.assign(new Error("Already reviewed"),{code:"23505"}); this.reviews.set(review.id,review); }
   async listReviewsForUser(walletAddress:string) { return [...this.reviews.values()].filter((review)=>review.subjectWallet===walletAddress); }
 }

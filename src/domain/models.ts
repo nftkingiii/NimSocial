@@ -94,3 +94,19 @@ export interface JobMessage {
   body: string;
   createdAt: Date;
 }
+
+export interface Conversation {
+  id: string;
+  memberA: string;
+  memberB: string;
+  contextPostId: string | null;
+  createdAt: Date;
+}
+
+export interface DirectMessage {
+  id: string;
+  conversationId: string;
+  senderWallet: string;
+  body: string;
+  createdAt: Date;
+}
