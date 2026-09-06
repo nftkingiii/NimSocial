@@ -394,6 +394,7 @@ a {
 .connect-gate__card h1 { margin: 18px 0 10px; }
 .connect-gate__card p { color: var(--ink-muted); line-height: 1.6; margin-bottom: 24px; }
 .connect-gate__card small { display: block; color: var(--ink-muted); margin-top: 16px; line-height: 1.5; }
+.connect-gate__error { color: var(--red); font-size: 0.9rem; margin: 14px 0 0; }
 .wallet-card--connected {
   min-height: 68px;
   grid-template-columns: 34px 1fr 8px;

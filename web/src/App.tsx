@@ -84,6 +84,7 @@ export default function App() {
   const [wallet, setWallet] = useState<WalletIdentity | null>(null);
   const providerRef = useRef<NimiqProvider | null>(null);
   const [walletPending, setWalletPending] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [posts, setPosts] = useState<FeedPost[]>(previewPosts);
@@ -137,6 +138,7 @@ export default function App() {
   const connectWallet = useCallback(async () => {
     if (walletPending) return;
     setWalletPending(true);
+    setConnectError(null);
     try {
       const connected = await connectAndAuthenticate();
       providerRef.current = connected.provider;
@@ -151,12 +153,14 @@ export default function App() {
         message: "Wallet connected. Your NimSocial session is ready.",
       });
     } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Nimiq Pay could not connect.";
+      setConnectError(message);
       setNotice({
         tone: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Nimiq Pay could not connect.",
+        message,
       });
     } finally {
       setWalletPending(false);
@@ -179,7 +183,13 @@ export default function App() {
   }, []);
 
   if (!wallet) {
-    return <ConnectGate pending={walletPending} onConnect={connectWallet} />;
+    return (
+      <ConnectGate
+        pending={walletPending}
+        error={connectError}
+        onConnect={connectWallet}
+      />
+    );
   }
 
   const handleNavigation = (next: AppSection) => {
@@ -992,7 +1002,7 @@ function WalletCard({
   );
 }
 
-function ConnectGate({ pending, onConnect }: { pending: boolean; onConnect: () => void }) {
+function ConnectGate({ pending, error, onConnect }: { pending: boolean; error: string | null; onConnect: () => void }) {
   return (
     <main className="connect-gate">
       <div className="connect-gate__card">
@@ -1003,6 +1013,7 @@ function ConnectGate({ pending, onConnect }: { pending: boolean; onConnect: () =
         <button className="button button--primary" type="button" disabled={pending} onClick={onConnect}>
           {pending ? "Waiting for Nimiq Pay…" : "Connect with Nimiq Pay"}
         </button>
+        {error && <p className="connect-gate__error" role="alert">{error}</p>}
         <small>Your keys stay in Nimiq Pay. NimSocial only receives a signed session.</small>
       </div>
     </main>
