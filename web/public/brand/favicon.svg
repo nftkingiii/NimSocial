@@ -1,6 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="17" fill="#0c1b2a"/>
-  <path d="M18 43V21l28 22V21" fill="none" stroke="#78e7c5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="18" cy="21" r="4.2" fill="#2f7df4" stroke="#f7f5ee" stroke-width="2"/>
-  <circle cx="46" cy="43" r="4.2" fill="#2f7df4" stroke="#f7f5ee" stroke-width="2"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title"><title id="title">NimSocial</title><rect width="96" height="96" rx="26" fill="#2454EB"/><path d="M24 70V26h13l22 29V26h13v44H59L37 41v29Z" fill="#fff"/><path d="m59 55 13 15H59L37 41V26Z" fill="#B8D1FF"/></svg>

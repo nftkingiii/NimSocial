@@ -1,22 +1,16 @@
-# NimSocial brand foundation
+# NimSocial — connections that create work
 
-## Concept
+The folded N uses two upright strokes connected by a pale-blue diagonal. It represents independent people meeting through their work. The solid silhouette survives small app-icon and favicon sizes.
 
-The mark is a **proof path**: one uninterrupted line forms an `N` between two verified endpoints. The enclosing rounded square reads as both an app frame and a conversation space. It represents public progress moving from request to proof without using generic coins, chains, or chat bubbles.
+- Identity blue: #2454EB
+- Deep ink: #0C1B2A
+- Canvas: #F5F6F8
+- Surface: #FFFFFF
+- Divider: #E5E8EE
+- Green, amber and red are reserved for product states.
 
-## Palette
+Use bundled Manrope for navigation, posts and internal headings. Use bundled Newsreader only for expressive welcome or campaign headlines. Addresses may use the platform monospace fallback. Fonts load from the app origin.
 
-- Ink `#0C1B2A` — trust, primary text, app icon field
-- Signal blue `#2F7DF4` — wallet actions and active navigation
-- Proof mint `#78E7C5` — verified work and completed payments
-- Paper `#F7F5EE` — warm, human background
-- Amber `#D78A1F` — pending work or wallet confirmation
-- Red `#C95050` — failed payment, dispute, or destructive state
+Keep one quarter of the mark width as clear space. Do not stretch or rotate it. The SVG versions in public/brand serve the product mark, favicon and app icon.
 
-## Usage
-
-- Use `nimsocial-mark.svg` for product headers and partner placements.
-- Use `favicon.svg` at browser-tab sizes.
-- Use `app-icon.svg` for Nimiq Pay listings and mobile home-screen artwork.
-- Keep clear space equal to one endpoint diameter around the mark.
-- Do not recolor the endpoints with semantic status colors; those colors belong to product state, not identity.
+Internal screens prioritize 16px reading text and 44px touch targets. Decorative motion must respect reduced-motion preferences.

@@ -1,0 +1,81 @@
+/* NimSocial: shared hierarchy, legibility and responsive rhythm. */
+.brand__mark { box-shadow: none; border-radius: 12px; }
+.brand__type strong { font-family: "Manrope Variable", sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -.07em; }
+.brand__type small { text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 500; }
+.sidebar, .mobile-header { background: var(--surface); }
+.sidebar, .right-rail { height: 100dvh; }
+.right-rail__scroll { height: calc(100dvh - 66px); }
+.screen-header { min-height: 116px; padding: 24px 0; align-items: center; }
+.screen-header h1, .profile-hero h1 { font-family: "Manrope Variable", sans-serif; font-size: clamp(25px, 3vw, 34px); font-weight: 800; line-height: 1.15; letter-spacing: -.055em; }
+.section-heading h2, .wallet-screen-card h2, .empty-state h2, .compose-dialog__header h2, .onboarding-step h2 { font-family: "Manrope Variable", sans-serif; letter-spacing: -.04em; line-height: 1.2; }
+.post-card__identity strong { font-size: 15px; }
+.post-card__identity span { font-size: 12px; }
+.post-card__body { font-size: 16px; line-height: 1.65; }
+.post-card--openable:hover { background: #f8faff; }
+.feed-controls [role="tab"] { font-size: 13px; min-height: 48px; }
+.feed-controls [role="tab"].is-active::after { height: 3px; border-radius: 3px; }
+.composer-trigger { box-shadow: none; background: #f7f9fc; }
+.composer-trigger > span:nth-child(2) { font-size: 15px; }
+.button { min-height: 44px; }
+.button--primary { background: var(--blue); color: white; box-shadow: none; }
+.button--primary:hover { background: var(--blue-dark); }
+.work-callout { border: 1px solid var(--line); border-radius: 14px; }
+.work-callout strong { font-size: 13px; }
+.work-callout button { min-height: 44px; font-size: 12px; }
+.preview-banner { font-size: 12px; }
+.engagement button, .proof-meta button { min-width: 44px; min-height: 44px; height: 44px; }
+.engagement button span { font-size: 12px; }
+.proof-meta .proof-dot { display: none; }
+.tag-row span { font-size: 11px; }
+.talent-card { box-shadow: none; border-radius: 18px; }
+.talent-card__identity strong { font-family: "Manrope Variable", sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -.04em; }
+.talent-card__identity span, .talent-card > p { font-size: 14px; line-height: 1.6; }
+.talent-card__meta, .talent-card footer > span, .talent-card footer small { font-size: 12px; }
+.follow-button { min-height: 44px; font-size: 12px; }
+.screen-header p { font-size: 14px; }
+.wallet-card { flex-wrap: wrap; }
+.wallet-card button.wallet-card__disconnect { min-height: 44px; font-size: 12px; }
+.wallet-screen-card > p { font-family: inherit; overflow-wrap: anywhere; }
+button, a { touch-action: manipulation; }
+button { transition: background-color 140ms ease, color 140ms ease; }
+input, textarea, select { font: inherit; font-size: 16px; }
+.connect-gate { min-height: 100dvh; display: flex; flex-direction: column; padding: 32px clamp(24px, 6vw, 96px); background: #f5f6f8; }
+.connect-gate__brand, .connect-gate__footer, .connect-gate__layout { width: min(1200px, 100%); margin-inline: auto; }
+.connect-gate__layout { flex: 1; display: grid; grid-template-columns: 1.35fr 1fr; gap: clamp(36px, 7vw, 110px); align-items: center; padding-block: 64px; }
+.connect-gate__story h1 { font-family: "Manrope Variable", sans-serif; font-size: clamp(44px, 5.8vw, 78px); font-weight: 800; letter-spacing: -.065em; line-height: 1.04; margin: 0 0 28px; }
+.connect-gate__story h1 em { font-family: "Newsreader Variable", Georgia, serif; font-weight: 450; color: var(--blue); letter-spacing: -.04em; }
+.connect-gate__story > p { max-width: 430px; font-size: 17px; line-height: 1.7; color: var(--ink-muted); }
+.connect-gate__steps { display: grid; gap: 22px; margin-top: 38px; }
+.connect-gate__steps > div { display: grid; grid-template-columns: 32px 1fr; column-gap: 12px; }
+.connect-gate__steps span { color: var(--blue); font-size: 12px; padding-top: 4px; font-variant-numeric: tabular-nums; }
+.connect-gate__steps strong { font-size: 14px; }
+.connect-gate__steps p { grid-column: 2; margin: 4px 0 0; color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
+.connect-gate__card { width: 100%; max-width: 440px; justify-self: end; padding: 40px; border-radius: 24px; border: 1px solid var(--line); box-shadow: 0 12px 48px #13263a08; }
+.connect-gate__mark { display: block; border-radius: 18px; margin-bottom: 28px; }
+.connect-gate__card h2 { font-size: 30px; line-height: 1.15; letter-spacing: -.05em; margin: 0; }
+.connect-gate__card p { font-size: 14px; line-height: 1.7; margin: 18px 0 26px; }
+.connect-gate__card .button { width: 100%; min-height: 52px; border-radius: 12px; font-size: 14px; }
+.connect-gate__card small { display: flex; gap: 8px; font-size: 11px; line-height: 1.7; margin-top: 20px; }
+.connect-gate__card small svg { flex-shrink: 0; margin-top: 2px; }
+.connect-gate__card .connect-gate__error { color: var(--red); background: var(--red-soft); padding: 12px; border-radius: 10px; margin: 16px 0 0; }
+.connect-gate__footer { display: flex; justify-content: space-between; gap: 16px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-muted); font-size: 11px; }
+@media (max-width: 790px) {
+  .connect-gate { padding: 24px 22px; }
+  .connect-gate__layout { display: flex; flex-direction: column; gap: 28px; padding-block: 40px; align-items: stretch; }
+  .connect-gate__story h1 { font-size: clamp(40px, 10vw, 62px); margin-bottom: 16px; }
+  .connect-gate__story > p { font-size: 15px; }
+  .connect-gate__steps { display: none; }
+  .connect-gate__card { max-width: none; padding: 26px; border-radius: 20px; }
+  .connect-gate__mark { width: 48px; height: 48px; margin-bottom: 20px; }
+  .connect-gate__card h2 { font-size: 26px; }
+  .connect-gate__footer { font-size: 10px; }
+  .screen-header { min-height: 110px; padding: 24px 0; }
+  .screen-header h1, .profile-hero h1 { font-size: 28px; line-height: 1.15; }
+  .mobile-header .icon-button { width: 44px; height: 44px; }
+  .bottom-nav button.is-active { color: var(--blue); }
+  .post-card__body { font-size: 16px; }
+  .main-content { padding-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}

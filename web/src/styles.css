@@ -4,13 +4,15 @@
   --ink-700: #3d4d5d;
   --ink-500: #6d7883;
   --ink-300: #b4bbc1;
-  --paper: #f7f5ee;
-  --surface: #fffefa;
+  --paper: #f5f6f8;
+  --surface: #ffffff;
   --surface-blue: #eff5ff;
-  --line: #e2e0d8;
+  --line: #e5e8ee;
   --line-strong: #cbc9c0;
-  --blue: #2f7df4;
-  --blue-dark: #1d62ca;
+  --blue: #2454eb;
+  --blue-dark: #2049c7;
+  --ink-muted: #626f80;
+  --canvas: #f5f6f8;
   --mint: #78e7c5;
   --mint-soft: #e7f8f1;
   --green: #208465;
@@ -29,7 +31,7 @@
   --rail: 304px;
   color: var(--ink-950);
   background: var(--paper);
-  font-family: "Muli", system-ui, sans-serif;
+  font-family: "Manrope Variable", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }

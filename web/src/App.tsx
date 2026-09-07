@@ -867,7 +867,6 @@ export default function App() {
         <MobileNavButton
           label="Profile"
           active={section === "profile"}
-          badge="1"
           onClick={() => handleNavigation("profile")}
         >
           <UserRound />
@@ -1005,22 +1004,34 @@ function WalletCard({
 function ConnectGate({ pending, error, onConnect }: { pending: boolean; error: string | null; onConnect: () => void }) {
   return (
     <main className="connect-gate">
+      <header className="connect-gate__brand"><Brand /></header>
+      <div className="connect-gate__layout">
+      <section className="connect-gate__story" aria-label="About NimSocial">
+        <h1>Good work.<br /><em>Great connections.</em></h1>
+        <p>A place for the work you do, the people you meet, and what you build together.</p>
+        <div className="connect-gate__steps">
+          <div><span>01</span><strong>Find your people</strong><p>Discover skills, services, and your next collaborator.</p></div>
+          <div><span>02</span><strong>Show your work</strong><p>Share progress and let your experience speak.</p></div>
+          <div><span>03</span><strong>Make it happen</strong><p>Start a conversation and agree on the next step.</p></div>
+        </div>
+      </section>
       <div className="connect-gate__card">
-        <div className="wallet-screen-card__icon"><WalletCards /></div>
-        <span className="eyebrow">Nimiq Pay</span>
-        <h1>Bring your work wallet.</h1>
-        <p>Connect with Nimiq Pay to enter NimSocial, publish work, and message people securely.</p>
+        <img className="connect-gate__mark" src="/brand/nimsocial-mark.svg" alt="" width="64" height="64" />
+        <h2>Your next chapter<br />starts here.</h2>
+        <p>Open NimSocial inside Nimiq Pay and connect your wallet to get started.</p>
         <button className="button button--primary" type="button" disabled={pending} onClick={onConnect}>
-          {pending ? "Waiting for Nimiq Pay…" : "Connect with Nimiq Pay"}
+          {pending ? "Waiting for Nimiq Pay…" : <>Connect with Nimiq Pay <ChevronRight size={18} /></>}
         </button>
         {error && <p className="connect-gate__error" role="alert">{error}</p>}
-        <small>Your keys stay in Nimiq Pay. NimSocial only receives a signed session.</small>
+        <small><ShieldCheck size={16} /> Your keys stay with you. Connection requests a signature, not a payment.</small>
       </div>
+      </div>
+      <footer className="connect-gate__footer"><span>Work in public. Grow together.</span><span>Built for Nimiq Pay</span></footer>
     </main>
   );
 }
 
-function FeedScreen({
+export function FeedScreen({
   posts,
   source,
   onCompose,
@@ -1327,7 +1338,7 @@ function ThreadScreen({
   );
 }
 
-function ExploreScreen({
+export function ExploreScreen({
   profiles,
   source,
   onOpenProfile,
