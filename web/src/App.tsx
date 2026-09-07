@@ -15,6 +15,7 @@ import {
   Home,
   MapPin,
   Menu,
+  Moon,
   MessageCircle,
   MessageSquare,
   Plus,
@@ -25,6 +26,7 @@ import {
   Send,
   UserRound,
   WalletCards,
+  Sun,
   X,
 } from "lucide-react";
 import { Brand } from "./components/Brand";
@@ -81,6 +83,9 @@ export default function App() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return window.localStorage.getItem("nimsocial-theme") !== "light"; } catch { return true; }
+  });
   const [wallet, setWallet] = useState<WalletIdentity | null>(null);
   const providerRef = useRef<NimiqProvider | null>(null);
   const [walletPending, setWalletPending] = useState(false);
@@ -110,6 +115,12 @@ export default function App() {
   >({});
   const [notice, setNotice] = useState<Notice>(null);
   const feedScrollPosition = useRef(0);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? "dark" : "light";
+    try { window.localStorage.setItem("nimsocial-theme", darkMode ? "dark" : "light"); } catch { /* storage unavailable */ }
+  }, [darkMode]);
+  const toggleTheme = () => setDarkMode((value) => !value);
 
   useEffect(() => {
     fetchFeed()
@@ -188,6 +199,8 @@ export default function App() {
         pending={walletPending}
         error={connectError}
         onConnect={connectWallet}
+        darkMode={darkMode}
+        onToggleTheme={toggleTheme}
       />
     );
   }
@@ -659,6 +672,9 @@ export default function App() {
           >
             <Bell />
           </button>
+          <button className="icon-button" type="button" onClick={toggleTheme} aria-label={darkMode ? "Use light theme" : "Use dark theme"}>
+            {darkMode ? <Sun /> : <Moon />}
+          </button>
           <button
             className="icon-button"
             type="button"
@@ -719,6 +735,10 @@ export default function App() {
           >
             <Settings size={19} />
             Settings
+          </button>
+          <button type="button" onClick={toggleTheme} aria-label={darkMode ? "Use light theme" : "Use dark theme"}>
+            {darkMode ? <Sun size={19} /> : <Moon size={19} />}
+            {darkMode ? "Light theme" : "Dark theme"}
           </button>
         </div>
         <WalletCard
@@ -1001,10 +1021,10 @@ function WalletCard({
   );
 }
 
-function ConnectGate({ pending, error, onConnect }: { pending: boolean; error: string | null; onConnect: () => void }) {
+function ConnectGate({ pending, error, onConnect, darkMode, onToggleTheme }: { pending: boolean; error: string | null; onConnect: () => void; darkMode: boolean; onToggleTheme: () => void }) {
   return (
     <main className="connect-gate">
-      <header className="connect-gate__brand"><Brand /></header>
+      <header className="connect-gate__brand"><Brand /><button className="theme-toggle" type="button" onClick={onToggleTheme} aria-label={darkMode ? "Use light theme" : "Use dark theme"}>{darkMode ? <Sun size={18} /> : <Moon size={18} />}</button></header>
       <div className="connect-gate__layout">
       <section className="connect-gate__story" aria-label="About NimSocial">
         <h1>Good work.<br /><em>Great connections.</em></h1>

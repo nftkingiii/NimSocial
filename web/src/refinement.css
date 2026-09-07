@@ -79,3 +79,53 @@ input, textarea, select { font: inherit; font-size: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
+
+/* Dark theme is the default in-product mode. */
+:root[data-theme="dark"] {
+  --ink-950: #f4f7fb;
+  --ink-900: #e5ebf4;
+  --ink-700: #aab7c8;
+  --ink-500: #7e8da2;
+  --ink-300: #526176;
+  --paper: #0b1220;
+  --canvas: #0b1220;
+  --surface: #111b2b;
+  --surface-blue: #14284d;
+  --line: #243249;
+  --line-strong: #33445e;
+  --blue: #5b82ff;
+  --blue-dark: #7e9cff;
+  --mint: #72e4c1;
+  --mint-soft: #123b3b;
+  --green: #66d6ad;
+  --amber: #f1b45e;
+  --amber-soft: #3d2d16;
+  --red: #ff8d93;
+  --red-soft: #3e1d2a;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.22), 0 10px 28px rgba(0,0,0,.16);
+  --shadow-lg: 0 32px 90px rgba(0,0,0,.42), 0 4px 18px rgba(0,0,0,.22);
+}
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .connect-gate { background: var(--paper); color: var(--ink-950); }
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .mobile-header,
+:root[data-theme="dark"] .main-content,
+:root[data-theme="dark"] .surface,
+:root[data-theme="dark"] .wallet-screen-card,
+:root[data-theme="dark"] .connect-gate__card { background: var(--surface); }
+:root[data-theme="dark"] .right-rail { background: var(--paper); }
+:root[data-theme="dark"] .bottom-nav { background: rgba(17,27,43,.96); border-color: var(--line); }
+:root[data-theme="dark"] .post-card--openable:hover { background: #142138; }
+:root[data-theme="dark"] .composer-trigger { background: #162337; }
+:root[data-theme="dark"] .work-callout,
+:root[data-theme="dark"] .job-card,
+:root[data-theme="dark"] .talent-card,
+:root[data-theme="dark"] .message-list,
+:root[data-theme="dark"] .message-panel { background: #111b2b; border-color: var(--line); }
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select { background: #0e1828; color: var(--ink-950); border-color: var(--line-strong); }
+:root[data-theme="dark"] .connect-gate__card { box-shadow: var(--shadow-lg); }
+.connect-gate__brand { display: flex; align-items: center; justify-content: space-between; }
+.theme-toggle { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-700); cursor: pointer; }
+.theme-toggle:hover { color: var(--blue); border-color: var(--blue); }
