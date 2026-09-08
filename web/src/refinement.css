@@ -87,14 +87,15 @@ input, textarea, select { font: inherit; font-size: 16px; }
   --ink-700: #aab7c8;
   --ink-500: #7e8da2;
   --ink-300: #526176;
+  --ink-muted: #aab7c8;
   --paper: #0b1220;
   --canvas: #0b1220;
   --surface: #111b2b;
   --surface-blue: #14284d;
   --line: #243249;
   --line-strong: #33445e;
-  --blue: #5b82ff;
-  --blue-dark: #7e9cff;
+  --blue: #4169e8;
+  --blue-dark: #3457c9;
   --mint: #72e4c1;
   --mint-soft: #123b3b;
   --green: #66d6ad;
@@ -105,6 +106,7 @@ input, textarea, select { font: inherit; font-size: 16px; }
   --shadow-sm: 0 1px 2px rgba(0,0,0,.22), 0 10px 28px rgba(0,0,0,.16);
   --shadow-lg: 0 32px 90px rgba(0,0,0,.42), 0 4px 18px rgba(0,0,0,.22);
 }
+:root[data-theme="dark"] { color-scheme: dark; }
 :root[data-theme="dark"] body,
 :root[data-theme="dark"] .connect-gate { background: var(--paper); color: var(--ink-950); }
 :root[data-theme="dark"] .sidebar,
@@ -126,6 +128,12 @@ input, textarea, select { font: inherit; font-size: 16px; }
 :root[data-theme="dark"] textarea,
 :root[data-theme="dark"] select { background: #0e1828; color: var(--ink-950); border-color: var(--line-strong); }
 :root[data-theme="dark"] .connect-gate__card { box-shadow: var(--shadow-lg); }
+:root[data-theme="dark"] .thread-header { background: rgba(17, 27, 43, 0.95); }
+:root[data-theme="dark"] .thread-header > button:hover,
+:root[data-theme="dark"] .engagement button:hover,
+:root[data-theme="dark"] .proof-meta button:hover { background: var(--surface-blue); color: var(--ink-950); }
+:root[data-theme="dark"] .composer-trigger__action { background: var(--blue); color: #fff; }
+:root[data-theme="dark"] .work-callout button { background: var(--surface-blue); color: var(--blue-dark); }
 .connect-gate__brand { display: flex; align-items: center; justify-content: space-between; }
 .theme-toggle { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-700); cursor: pointer; }
 .theme-toggle:hover { color: var(--blue); border-color: var(--blue); }

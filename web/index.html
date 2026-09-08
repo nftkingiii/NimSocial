@@ -11,6 +11,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("nimsocial-theme") === "light" ? "light" : "dark";
+      } catch (_) {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
