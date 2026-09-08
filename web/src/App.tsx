@@ -216,11 +216,7 @@ export default function App() {
       return;
     }
     if (next === "profile") {
-      const mine = wallet
-        ? (profiles.find(
-            (profile) => profile.walletAddress === wallet.address,
-          ) ?? activeProfile)
-        : null;
+      const mine = activeProfile?.walletAddress === wallet.address ? activeProfile : null;
       setActiveProfile(mine);
       setProfilePosts(
         mine
@@ -714,11 +710,7 @@ export default function App() {
           <button
             type="button"
             onClick={() =>
-              setNotice({
-                tone: "info",
-                message:
-                  "Publish work, agree terms, fund escrow, share proof, then settle and review.",
-              })
+              setSection("how")
             }
           >
             <CircleHelp size={19} />
@@ -727,10 +719,7 @@ export default function App() {
           <button
             type="button"
             onClick={() =>
-              setNotice({
-                tone: "info",
-                message: "Profile and notification preferences will live here.",
-              })
+              setSection("settings")
             }
           >
             <Settings size={19} />
@@ -840,6 +829,15 @@ export default function App() {
             onMessage={(profile) => startConversation(profile.walletAddress)}
           />
         )}
+        {section === "how" && <HowItWorksScreen onCompose={() => setComposeOpen(true)} onExplore={() => handleNavigation("explore")} />}
+        {section === "settings" && (
+          <SettingsScreen
+            darkMode={darkMode}
+            onToggleTheme={toggleTheme}
+            onProfile={() => handleNavigation("profile")}
+            onDisconnect={disconnectWallet}
+          />
+        )}
       </main>
       <aside className="right-rail" aria-label="Work overview">
         <RightRail
@@ -903,6 +901,7 @@ export default function App() {
       <OnboardingDialog
         open={onboardingOpen}
         saving={savingProfile}
+        profile={activeProfile}
         onClose={() => setOnboardingOpen(false)}
         onSubmit={completeOnboarding}
       />
@@ -1942,7 +1941,7 @@ function ProfileScreen({
               type="button"
               onClick={onOnboard}
             >
-              Preview setup
+              Set up your profile
             </button>
           </div>
         </section>
@@ -1950,10 +1949,9 @@ function ProfileScreen({
           <div>
             <ShieldCheck size={28} />
           </div>
-          <h2>Your proof trail starts with the first job.</h2>
+          <h2>Your connected profile starts here.</h2>
           <p>
-            Completed work and payment-backed ratings will appear here with
-            their evidence links.
+            Complete setup to publish your work identity, receive relevant requests, and build a verified reputation.
           </p>
           <button
             className="button button--dark"
@@ -1978,6 +1976,7 @@ function ProfileScreen({
       </button>
       <section className="profile-hero profile-hero--public">
         <div className="profile-hero__pattern">
+          {profile.bannerImageUrl && <img className="profile-hero__banner" src={profile.bannerImageUrl} alt="" />}
           <span className="profile-availability">
             <i />
             {profile.availability === "open"
@@ -1987,7 +1986,7 @@ function ProfileScreen({
                 : "Not open"}
           </span>
         </div>
-        <Avatar name={name} size="lg" />
+        <Avatar name={name} src={profile.profileImageUrl} size="lg" />
         <div className="profile-hero__identity">
           <h1>{name}</h1>
           <strong>{profile.professionalTitle}</strong>
@@ -2239,6 +2238,7 @@ function RightRail({
                 >
                   <Avatar
                     name={profile.displayName ?? profile.walletAddress}
+                    src={profile.profileImageUrl}
                     size="sm"
                   />
                 </button>
@@ -2273,4 +2273,29 @@ function RightRail({
       </div>
     </>
   );
+}
+
+function HowItWorksScreen({ onCompose, onExplore }: { onCompose: () => void; onExplore: () => void }) {
+  const steps = [
+    ["01", "Find the right work", "Browse public requests, proof updates, and professionals who are open to collaborate."],
+    ["02", "Agree in the open", "Message a person, define the deliverable, and keep the useful context attached to the work."],
+    ["03", "Fund with confidence", "A job moves into escrow only when both sides agree. Funds release after delivery and review."],
+    ["04", "Build portable proof", "Completed work and ratings become a profile history people can verify before they hire."],
+  ];
+  return <section className="product-screen how-screen">
+    <header className="screen-header"><div><span className="eyebrow">NimSocial guide</span><h1>How work moves here.</h1><p>A public network for finding people, making clear agreements, and leaving a useful proof trail.</p></div></header>
+    <div className="how-grid">{steps.map(([number, title, copy]) => <article className="how-card" key={number}><span>{number}</span><h2>{title}</h2><p>{copy}</p></article>)}</div>
+    <section className="how-next surface"><div><span className="eyebrow">Start with a signal</span><h2>Show what you need or what you can do.</h2><p>Every request, update, and proof post helps the right people find the next step.</p></div><div className="how-actions"><button className="button button--primary" type="button" onClick={onCompose}><Feather size={16}/> Create a post</button><button className="button button--quiet" type="button" onClick={onExplore}><Compass size={16}/> Explore people</button></div></section>
+  </section>;
+}
+
+function SettingsScreen({ darkMode, onToggleTheme, onProfile, onDisconnect }: { darkMode: boolean; onToggleTheme: () => void; onProfile: () => void; onDisconnect: () => void }) {
+  return <section className="product-screen settings-screen">
+    <header className="screen-header"><div><span className="eyebrow">Your controls</span><h1>Settings</h1><p>Keep your profile, theme, and wallet session under your control.</p></div></header>
+    <div className="settings-list">
+      <section className="settings-card"><div><strong>Profile and discovery</strong><p>Edit the identity, skills, availability, and images people use to find you.</p></div><button className="button button--quiet" type="button" onClick={onProfile}>Open profile <ChevronRight size={16}/></button></section>
+      <section className="settings-card"><div><strong>Appearance</strong><p>NimSocial defaults to dark mode for comfortable mobile scanning.</p></div><button className="button button--quiet" type="button" onClick={onToggleTheme}>{darkMode ? <Sun size={16}/> : <Moon size={16}/>} {darkMode ? "Use light theme" : "Use dark theme"}</button></section>
+      <section className="settings-card settings-card--danger"><div><strong>Wallet session</strong><p>Disconnect this Nimiq Pay session from NimSocial on this device.</p></div><button className="button button--quiet" type="button" onClick={onDisconnect}>Disconnect</button></section>
+    </div>
+  </section>;
 }

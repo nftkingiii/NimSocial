@@ -8,7 +8,7 @@ export function ProfileCard({profile,onOpen,onFollow}:{profile:ProfessionalProfi
   const name=profile.displayName??profile.walletAddress;
   return <article className="talent-card">
     <div className="talent-card__top">
-      <button className="avatar-button" type="button" onClick={onOpen} aria-label={`Open ${name}'s profile`}><Avatar name={name}/></button>
+      <button className="avatar-button" type="button" onClick={onOpen} aria-label={`Open ${name}'s profile`}><Avatar name={name} src={profile.profileImageUrl}/></button>
       <button className={`follow-button ${profile.isFollowing?"is-following":""}`} type="button" onClick={onFollow} aria-label={profile.isFollowing?`Unfollow ${name}`:`Follow ${name}`}>{profile.isFollowing?<Check size={16}/>:<Plus size={16}/>}<span>{profile.isFollowing?"Following":"Follow"}</span></button>
     </div>
     <button className="talent-card__identity" type="button" onClick={onOpen}><strong>{name}</strong><span>{profile.professionalTitle}</span></button>

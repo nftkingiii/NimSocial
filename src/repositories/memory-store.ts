@@ -55,18 +55,7 @@ export class MemoryStore implements Store {
   }
   async updateUserProfile(
     walletAddress: string,
-    profile: Pick<
-      User,
-      | "displayName"
-      | "bio"
-      | "profileRole"
-      | "professionalTitle"
-      | "skills"
-      | "availability"
-      | "workPreference"
-      | "location"
-      | "onboardingCompletedAt"
-    >,
+    profile: Pick<User, "displayName" | "bio" | "profileRole" | "professionalTitle" | "skills" | "availability" | "workPreference" | "location" | "onboardingCompletedAt"> & Partial<Pick<User, "profileImageUrl" | "bannerImageUrl">>,
   ) {
     const user = this.users.get(walletAddress);
     if (!user) return null;

@@ -46,21 +46,10 @@ export class PostgresStore implements Store {
   }
   async updateUserProfile(
     walletAddress: string,
-    profile: Pick<
-      User,
-      | "displayName"
-      | "bio"
-      | "profileRole"
-      | "professionalTitle"
-      | "skills"
-      | "availability"
-      | "workPreference"
-      | "location"
-      | "onboardingCompletedAt"
-    >,
+    profile: Pick<User, "displayName" | "bio" | "profileRole" | "professionalTitle" | "skills" | "availability" | "workPreference" | "location" | "onboardingCompletedAt"> & Partial<Pick<User, "profileImageUrl" | "bannerImageUrl">>,
   ) {
     const r = await this.pool.query(
-      "UPDATE users SET display_name=$2,bio=$3,profile_role=$4,professional_title=$5,skills=$6::jsonb,availability=$7,work_preference=$8,location=$9,onboarding_completed_at=$10,updated_at=NOW() WHERE wallet_address=$1 RETURNING *",
+      "UPDATE users SET display_name=$2,bio=$3,profile_role=$4,professional_title=$5,skills=$6::jsonb,availability=$7,work_preference=$8,location=$9,profile_image_url=$10,banner_image_url=$11,onboarding_completed_at=$12,updated_at=NOW() WHERE wallet_address=$1 RETURNING *",
       [
         walletAddress,
         profile.displayName,
@@ -71,6 +60,8 @@ export class PostgresStore implements Store {
         profile.availability,
         profile.workPreference,
         profile.location,
+        profile.profileImageUrl ?? null,
+        profile.bannerImageUrl ?? null,
         profile.onboardingCompletedAt,
       ],
     );
@@ -492,6 +483,8 @@ function userFrom(r: QueryResultRow): User {
     availability: r.availability ?? "not_open",
     workPreference: r.work_preference,
     location: r.location,
+    profileImageUrl: r.profile_image_url ?? null,
+    bannerImageUrl: r.banner_image_url ?? null,
     onboardingCompletedAt: r.onboarding_completed_at
       ? new Date(r.onboarding_completed_at)
       : null,

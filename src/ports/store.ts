@@ -25,18 +25,7 @@ export interface Store {
   findUser(walletAddress: string): Promise<User | null>;
   updateUserProfile(
     walletAddress: string,
-    profile: Pick<
-      User,
-      | "displayName"
-      | "bio"
-      | "profileRole"
-      | "professionalTitle"
-      | "skills"
-      | "availability"
-      | "workPreference"
-      | "location"
-      | "onboardingCompletedAt"
-    >,
+    profile: Pick<User, "displayName" | "bio" | "profileRole" | "professionalTitle" | "skills" | "availability" | "workPreference" | "location" | "onboardingCompletedAt"> & Partial<Pick<User, "profileImageUrl" | "bannerImageUrl">>,
   ): Promise<User | null>;
   listProfiles(limit: number): Promise<User[]>;
   follow(followerWallet: string, followedWallet: string): Promise<void>;

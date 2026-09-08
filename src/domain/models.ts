@@ -15,6 +15,8 @@ export interface User {
   availability: Availability;
   workPreference: WorkPreference | null;
   location: string | null;
+  profileImageUrl: string | null;
+  bannerImageUrl: string | null;
   onboardingCompletedAt: Date | null;
   createdAt: Date;
 }

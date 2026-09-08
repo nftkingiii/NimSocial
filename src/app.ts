@@ -78,6 +78,8 @@ const profileSchema = z.object({
   availability: z.enum(["open", "busy", "not_open"]),
   workPreference: z.enum(["remote", "hybrid", "onsite", "flexible"]),
   location: z.string().trim().max(80).default(""),
+  profileImageUrl: z.string().max(350_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/).nullable().optional().default(null),
+  bannerImageUrl: z.string().max(350_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/).nullable().optional().default(null),
 });
 const profileQuerySchema = z.object({
   q: z.string().trim().max(80).optional(),
@@ -254,6 +256,8 @@ export async function buildApp(deps: AppDependencies) {
         availability: "not_open",
         workPreference: null,
         location: null,
+        profileImageUrl: null,
+        bannerImageUrl: null,
         onboardingCompletedAt: null,
         createdAt,
       };
@@ -313,6 +317,8 @@ export async function buildApp(deps: AppDependencies) {
       availability: input.availability,
       workPreference: input.workPreference,
       location: input.location || null,
+      profileImageUrl: input.profileImageUrl ?? null,
+      bannerImageUrl: input.bannerImageUrl ?? null,
       onboardingCompletedAt: now(),
     });
     if (!user) throw httpError(404, "Profile not found");

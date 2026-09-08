@@ -75,6 +75,8 @@ export interface ProfessionalProfile {
   availability: Availability;
   workPreference: WorkPreference | null;
   location: string | null;
+  profileImageUrl?: string | null;
+  bannerImageUrl?: string | null;
   onboardingCompletedAt: string | null;
   createdAt: string;
   followers: number;
@@ -96,6 +98,8 @@ export interface ProfileInput {
   availability: Availability;
   workPreference: WorkPreference;
   location: string;
+  profileImageUrl: string | null;
+  bannerImageUrl: string | null;
 }
 
 export interface DirectMessage {
@@ -125,4 +129,6 @@ export type AppSection =
   | "messages"
   | "wallet"
   | "notifications"
-  | "profile";
+  | "profile"
+  | "how"
+  | "settings";
