@@ -498,8 +498,10 @@ export async function buildApp(deps: AppDependencies) {
         minimumLuna: post.requiredLuna,
         expectedReference: post.paymentReference,
       });
-    } catch {
-      throw httpError(422, "Payment proof did not match the post intent");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "transaction verification failed";
+      request.log.warn({ postId: id, reason }, "Payment proof rejected");
+      throw httpError(422, `Payment proof did not match the post intent: ${reason}`);
     }
     const published = await deps.store.publishPost(id, txHash, now());
     if (!published) throw httpError(409, "Post could not be published");

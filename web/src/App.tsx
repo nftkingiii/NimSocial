@@ -371,7 +371,7 @@ export default function App() {
   }) => {
     if (!providerRef.current) {
       await connectWallet();
-      return;
+      return false;
     }
     setPublishing(true);
     try {
@@ -390,6 +390,7 @@ export default function App() {
         message:
           "Published. Your NIM payment and post reference are now linked.",
       });
+      return true;
     } catch (error) {
       setNotice({
         tone: "error",
@@ -398,6 +399,7 @@ export default function App() {
             ? error.message
             : "The post was not published.",
       });
+      return false;
     } finally {
       setPublishing(false);
     }

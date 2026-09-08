@@ -22,7 +22,7 @@ export function ComposeDialog({
   submitting: boolean;
   onClose: () => void;
   onConnect: () => void;
-  onSubmit: (input: { kind: PostKind; body: string; jobId?: string; attachments?: PostAttachment[] }) => Promise<void>;
+  onSubmit: (input: { kind: PostKind; body: string; jobId?: string; attachments?: PostAttachment[] }) => Promise<boolean>;
 }) {
   const titleId = useId();
   const dialogRef = useRef<HTMLElement>(null);
@@ -59,10 +59,12 @@ export function ComposeDialog({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!connected) { onConnect(); return; }
-    await onSubmit({ kind, body, ...(kind === "proof" && jobId ? { jobId } : {}), ...(attachments.length ? { attachments } : {}) });
-    setBody("");
-    setAttachments([]);
-    setAttachmentError("");
+    const published = await onSubmit({ kind, body, ...(kind === "proof" && jobId ? { jobId } : {}), ...(attachments.length ? { attachments } : {}) });
+    if (published) {
+      setBody("");
+      setAttachments([]);
+      setAttachmentError("");
+    }
   };
 
   const addFiles = (files: FileList | null, attachmentKind: "media" | "evidence") => {
