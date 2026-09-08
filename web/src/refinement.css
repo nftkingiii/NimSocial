@@ -164,6 +164,33 @@ input, textarea, select { font: inherit; font-size: 16px; }
 :root[data-theme="dark"] .proof-meta button:hover { background: var(--surface-blue); color: var(--ink-950); }
 :root[data-theme="dark"] .composer-trigger__action { background: var(--blue); color: #fff; }
 :root[data-theme="dark"] .work-callout button { background: var(--surface-blue); color: var(--blue-dark); }
+:root[data-theme="dark"] .toast {
+  background: #162337;
+  border-color: var(--line-strong);
+  color: var(--ink-950);
+  box-shadow: var(--shadow-lg);
+}
+:root[data-theme="dark"] .toast--success {
+  background: #123b3b;
+  border-color: #2d6c63;
+  color: #d9fff0;
+}
+:root[data-theme="dark"] .toast--error {
+  background: #3e1d2a;
+  border-color: #804252;
+  color: #ffe1e3;
+}
+:root[data-theme="dark"] .toast--info {
+  background: #14284d;
+  border-color: #34518d;
+  color: #e2eaff;
+}
+:root[data-theme="dark"] .toast > button { color: currentColor; }
+:root[data-theme="dark"] .payment-review { background: var(--mint-soft); color: var(--ink-950); }
+:root[data-theme="dark"] .payment-review__icon { background: #193f41; }
+:root[data-theme="dark"] .payment-review strong { color: var(--ink-950); }
+:root[data-theme="dark"] .payment-review small { color: var(--ink-700); }
+:root[data-theme="dark"] .inline-note { background: var(--amber-soft); color: #ffd28b; }
 .connect-gate__brand { display: flex; align-items: center; justify-content: space-between; }
 .theme-toggle { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-700); cursor: pointer; }
 .theme-toggle:hover { color: var(--blue); border-color: var(--blue); }
