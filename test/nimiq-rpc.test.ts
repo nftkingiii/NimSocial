@@ -9,14 +9,14 @@ describe("NimiqRpcPaymentVerifier", () => {
     const sender = KeyPair.generate().toAddress().toUserFriendlyAddress();
     const treasury = KeyPair.generate().toAddress().toUserFriendlyAddress();
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      result: {
-        hash: "a".repeat(64),
-        from: sender,
-        to: treasury,
-        value: "10000",
-        recipientData: "NSP:reference123",
-        blockNumber: 42,
-      },
+      result: { data: {
+          hash: "a".repeat(64),
+          from: sender,
+          to: treasury,
+          value: "10000",
+          recipientData: "NSP:reference123",
+          blockNumber: 42,
+        }, metadata: null },
     }), { status: 200, headers: { "content-type": "application/json" } })));
 
     const proof = await new NimiqRpcPaymentVerifier("https://rpc.example").verifyPostPayment({

@@ -31,10 +31,14 @@ export class NimiqRpcPaymentVerifier implements PaymentVerifier {
       signal: AbortSignal.timeout(8_000),
     });
     if (!response.ok) throw new Error("Nimiq RPC request failed");
-    const payload = await response.json() as { result?: RpcTransaction; error?: unknown };
+    const payload = await response.json() as { result?: unknown; error?: unknown };
     if (!payload.result || payload.error) throw new Error("Transaction was not found");
 
-    const tx = payload.result;
+    // PoS JSON-RPC wraps every result as { data, metadata }.
+    const result = payload.result;
+    const tx = typeof result === "object" && result !== null && "data" in result && typeof result.data === "object" && result.data !== null
+      ? result.data as RpcTransaction
+      : result as RpcTransaction;
     if (tx.hash && tx.hash.toLowerCase() !== input.txHash.toLowerCase()) throw new Error("Transaction hash mismatch");
     const sender = tx.from ?? tx.sender ?? "";
     const recipient = tx.to ?? tx.recipient ?? "";
