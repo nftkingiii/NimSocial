@@ -14,7 +14,7 @@ describe("NimiqRpcPaymentVerifier", () => {
           from: sender,
           to: treasury,
           value: "10000",
-          recipientData: "NSP:reference123",
+          recipientData: Buffer.from("NSP:reference123", "utf8").toString("hex"),
           blockNumber: 42,
         }, metadata: null },
     }), { status: 200, headers: { "content-type": "application/json" } })));

@@ -62,6 +62,10 @@ function decodeData(value: string): string {
   if (!value) return "";
   if (value.startsWith("0x")) return Buffer.from(value.slice(2), "hex").toString("utf8");
   if (value.includes(":")) return value;
+  if (/^[a-fA-F0-9]+$/.test(value) && value.length % 2 === 0) {
+    const decodedHex = Buffer.from(value, "hex").toString("utf8");
+    if (decodedHex && /^[\x20-\x7E]+$/.test(decodedHex)) return decodedHex;
+  }
   try {
     const decoded = Buffer.from(value, "base64").toString("utf8");
     return decoded && /^[\x20-\x7E]+$/.test(decoded) ? decoded : value;
