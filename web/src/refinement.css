@@ -27,6 +27,16 @@
 .engagement button span { font-size: 12px; }
 .proof-meta .proof-dot { display: none; }
 .tag-row span { font-size: 11px; }
+.post-attachments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.post-attachment { position: relative; min-height: 92px; overflow: hidden; display: grid; align-content: end; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-950); text-decoration: none; }
+.post-attachment img { width: 100%; height: 120px; object-fit: cover; }
+.post-attachment > span { position: absolute; left: 7px; bottom: 7px; padding: 3px 6px; border-radius: 5px; background: rgba(10, 17, 30, .78); color: #fff; font-size: 9px; font-weight: 750; }
+.post-attachment--document { min-height: 120px; padding: 14px; align-content: center; gap: 6px; background: var(--surface-blue); }
+.post-attachment--document span { color: var(--blue); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.post-attachment--document strong { font-size: 11px; overflow-wrap: anywhere; }
+.attachment-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.attachment-chips button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-700); font-size: 10px; cursor: pointer; }
+.inline-note--error { color: var(--red); background: var(--red-soft); }
 .talent-card { box-shadow: none; border-radius: 18px; }
 .talent-card__identity strong { font-family: "Manrope Variable", sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -.04em; }
 .talent-card__identity span, .talent-card > p { font-size: 14px; line-height: 1.6; }
@@ -191,6 +201,7 @@ input, textarea, select { font: inherit; font-size: 16px; }
 :root[data-theme="dark"] .payment-review strong { color: var(--ink-950); }
 :root[data-theme="dark"] .payment-review small { color: var(--ink-700); }
 :root[data-theme="dark"] .inline-note { background: var(--amber-soft); color: #ffd28b; }
+:root[data-theme="dark"] .inline-note--error { background: var(--red-soft); color: #ffe1e3; }
 .connect-gate__brand { display: flex; align-items: center; justify-content: space-between; }
 .theme-toggle { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-700); cursor: pointer; }
 .theme-toggle:hover { color: var(--blue); border-color: var(--blue); }

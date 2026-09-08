@@ -56,6 +56,7 @@ export interface Post {
   authorWallet: string;
   kind: PostKind;
   body: string;
+  attachments: PostAttachment[];
   jobId: string | null;
   state: PostState;
   paymentReference: string;
@@ -63,6 +64,14 @@ export interface Post {
   paymentTxHash: string | null;
   publishedAt: Date | null;
   createdAt: Date;
+}
+
+export interface PostAttachment {
+  kind: "media" | "evidence";
+  name: string;
+  mimeType: "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
+  dataUrl: string;
+  size: number;
 }
 
 export type PostEngagementType = "repost" | "appreciate" | "bookmark";

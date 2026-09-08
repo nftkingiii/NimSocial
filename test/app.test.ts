@@ -270,6 +270,25 @@ describe("NimSocial API", () => {
     ).toHaveLength(0);
   });
 
+  it("keeps validated media and evidence attachments on the paid post intent", async () => {
+    const user = await login();
+    const intent = await app.inject({
+      method: "POST",
+      url: "/v1/posts/intents",
+      headers: { authorization: `Bearer ${user.token}` },
+      payload: {
+        kind: "update",
+        body: "Attached evidence",
+        attachments: [
+          { kind: "media", name: "progress.png", mimeType: "image/png", dataUrl: "data:image/png;base64,aGVsbG8=", size: 5 },
+          { kind: "evidence", name: "brief.pdf", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,aGVsbG8=", size: 5 },
+        ],
+      },
+    });
+    expect(intent.statusCode).toBe(201);
+    expect(intent.json().post.attachments).toHaveLength(2);
+  });
+
   it("prevents a payment transaction from being reused", async () => {
     const user = await login();
     const headers = { authorization: `Bearer ${user.token}` };

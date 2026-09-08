@@ -123,6 +123,21 @@ export function PostCard({
         <p className="post-card__body">{post.body}</p>
       )}
 
+      {post.attachments?.length ? (
+        <div className="post-attachments" aria-label="Post attachments">
+          {post.attachments.map((attachment) => attachment.mimeType === "application/pdf" ? (
+            <a className="post-attachment post-attachment--document" key={`${attachment.name}-${attachment.size}`} href={attachment.dataUrl} target="_blank" rel="noreferrer">
+              <span>PDF evidence</span><strong>{attachment.name}</strong>
+            </a>
+          ) : (
+            <a className="post-attachment" key={`${attachment.name}-${attachment.size}`} href={attachment.dataUrl} target="_blank" rel="noreferrer">
+              <img src={attachment.dataUrl} alt={attachment.name} loading="lazy" />
+              <span>{attachment.kind === "evidence" ? "Evidence" : "Media"}</span>
+            </a>
+          ))}
+        </div>
+      ) : null}
+
       {(post.budget || post.proofLabel) && (
         <div className={`work-callout work-callout--${post.kind}`}>
           <BriefcaseBusiness size={18} />

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, CheckCircle2, Image, LockKeyhole, Paperclip, X } from "lucide-react";
-import type { PostKind } from "../types";
+import type { PostAttachment, PostKind } from "../types";
 
 const kinds: Array<{ value: PostKind; label: string; hint: string }> = [
   { value: "request", label: "Request", hint: "Find someone for a job" },
@@ -22,13 +22,17 @@ export function ComposeDialog({
   submitting: boolean;
   onClose: () => void;
   onConnect: () => void;
-  onSubmit: (input: { kind: PostKind; body: string; jobId?: string }) => Promise<void>;
+  onSubmit: (input: { kind: PostKind; body: string; jobId?: string; attachments?: PostAttachment[] }) => Promise<void>;
 }) {
   const titleId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const [kind, setKind] = useState<PostKind>("request");
   const [body, setBody] = useState("");
   const [jobId, setJobId] = useState("");
+  const [attachments, setAttachments] = useState<PostAttachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState("");
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const evidenceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -55,8 +59,37 @@ export function ComposeDialog({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!connected) { onConnect(); return; }
-    await onSubmit({ kind, body, ...(kind === "proof" && jobId ? { jobId } : {}) });
+    await onSubmit({ kind, body, ...(kind === "proof" && jobId ? { jobId } : {}), ...(attachments.length ? { attachments } : {}) });
     setBody("");
+    setAttachments([]);
+    setAttachmentError("");
+  };
+
+  const addFiles = (files: FileList | null, attachmentKind: "media" | "evidence") => {
+    if (!files?.length) return;
+    setAttachmentError("");
+    const selected = [...files];
+    const allowed = attachmentKind === "media"
+      ? ["image/jpeg", "image/png", "image/webp"]
+      : ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (selected.some((file) => !allowed.includes(file.type))) {
+      setAttachmentError(attachmentKind === "media" ? "Media accepts JPG, PNG, or WebP images." : "Evidence accepts images or PDF files.");
+      return;
+    }
+    if (selected.some((file) => file.size > 220_000)) {
+      setAttachmentError("Each attachment must be 220 KB or smaller.");
+      return;
+    }
+    if (attachments.length + selected.length > 3 || attachments.reduce((sum, item) => sum + item.size, 0) + selected.reduce((sum, file) => sum + file.size, 0) > 500_000) {
+      setAttachmentError("Choose up to 3 attachments, 500 KB total.");
+      return;
+    }
+    Promise.all(selected.map((file) => new Promise<PostAttachment>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ kind: attachmentKind, name: file.name, mimeType: file.type as PostAttachment["mimeType"], dataUrl: String(reader.result), size: file.size });
+      reader.onerror = () => reject(new Error("Could not read that file."));
+      reader.readAsDataURL(file);
+    }))).then((items) => setAttachments((current) => [...current, ...items])).catch(() => setAttachmentError("Could not read that attachment."));
   };
 
   return (
@@ -89,10 +122,14 @@ export function ComposeDialog({
           )}
 
           <div className="attachment-row">
-            <button type="button" disabled title="Media upload is planned after the first payment flow"><Image size={18} /> Media</button>
-            <button type="button" disabled title="Evidence attachments are planned after the first payment flow"><Paperclip size={18} /> Evidence</button>
-            <span>Attachments coming next</span>
+            <input ref={mediaInputRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { addFiles(event.target.files, "media"); event.currentTarget.value = ""; }} />
+            <input ref={evidenceInputRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple onChange={(event) => { addFiles(event.target.files, "evidence"); event.currentTarget.value = ""; }} />
+            <button type="button" onClick={() => mediaInputRef.current?.click()} disabled={submitting}><Image size={18} /> Media</button>
+            <button type="button" onClick={() => evidenceInputRef.current?.click()} disabled={submitting}><Paperclip size={18} /> Evidence</button>
+            <span>{attachments.length ? `${attachments.length} attached` : "Add proof or media"}</span>
           </div>
+          {attachments.length > 0 && <div className="attachment-chips">{attachments.map((attachment, index) => <button key={`${attachment.name}-${index}`} type="button" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{attachment.name}<X size={13} aria-label="Remove attachment" /></button>)}</div>}
+          {attachmentError && <p className="inline-note inline-note--error">{attachmentError}</p>}
 
           <div className="payment-review">
             <div className="payment-review__icon"><LockKeyhole size={20} /></div>

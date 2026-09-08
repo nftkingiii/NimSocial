@@ -367,6 +367,7 @@ export default function App() {
     kind: PostKind;
     body: string;
     jobId?: string;
+    attachments?: import("./types").PostAttachment[];
   }) => {
     if (!providerRef.current) {
       await connectWallet();

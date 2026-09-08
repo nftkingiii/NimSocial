@@ -19,6 +19,7 @@ import type {
   Job,
   JobMessage,
   Post,
+  PostAttachment,
   PostEngagementType,
   PostKind,
   PostReply,
@@ -37,10 +38,27 @@ const sessionSchema = z.object({
   publicKey: z.string().regex(/^[a-fA-F0-9]{64}$/),
   signature: z.string().regex(/^[a-fA-F0-9]{128}$/),
 });
+const attachmentSchema = z.object({
+  kind: z.enum(["media", "evidence"]),
+  name: z.string().trim().min(1).max(120),
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]),
+  dataUrl: z.string().max(300_000).regex(/^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,[A-Za-z0-9+/=]+$/),
+  size: z.number().int().min(1).max(220_000),
+}).superRefine((attachment, ctx) => {
+  if (attachment.kind === "media" && attachment.mimeType === "application/pdf") {
+    ctx.addIssue({ code: "custom", path: ["mimeType"], message: "Media attachments must be images" });
+  }
+});
 const postSchema = z.object({
   kind: z.enum(["request", "service", "update", "proof"]),
   body: z.string().trim().min(1).max(2000),
   jobId: z.string().min(8).max(64).optional(),
+  attachments: z.array(attachmentSchema).max(3).default([]),
+}).superRefine((post, ctx) => {
+  const total = post.attachments.reduce((sum, attachment) => sum + attachment.size, 0);
+  if (total > 500_000) {
+    ctx.addIssue({ code: "custom", path: ["attachments"], message: "Attachments must be 500 KB or smaller in total" });
+  }
 });
 const publishSchema = z.object({
   txHash: z.string().regex(/^[a-fA-F0-9]{64}$/),
@@ -108,7 +126,7 @@ export interface AppDependencies {
 export async function buildApp(deps: AppDependencies) {
   const app = Fastify({
     logger: deps.config.NODE_ENV !== "test",
-    bodyLimit: 64 * 1024,
+    bodyLimit: 1 * 1024 * 1024,
     trustProxy: false,
   });
   const now = deps.now ?? (() => new Date());
@@ -440,6 +458,7 @@ export async function buildApp(deps: AppDependencies) {
       authorWallet: wallet,
       kind: input.kind,
       body: input.body,
+      attachments: input.attachments as PostAttachment[],
       jobId: input.jobId ?? null,
       state: "draft",
       paymentReference: `NSP:${nanoid(16)}`,

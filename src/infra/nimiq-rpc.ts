@@ -9,6 +9,7 @@ type RpcTransaction = {
   recipient?: string;
   value?: number | string;
   data?: string;
+  recipientData?: string;
   blockNumber?: number | null;
   blockHeight?: number | null;
 };
@@ -38,7 +39,9 @@ export class NimiqRpcPaymentVerifier implements PaymentVerifier {
     const sender = tx.from ?? tx.sender ?? "";
     const recipient = tx.to ?? tx.recipient ?? "";
     const valueLuna = BigInt(tx.value ?? 0);
-    const data = decodeData(tx.data ?? "");
+    // PoS RPC renamed `data` to `recipientData`; support both so published
+    // payments are verified against the exact reference sent by the wallet.
+    const data = decodeData(tx.recipientData ?? tx.data ?? "");
     const confirmed = (tx.blockNumber ?? tx.blockHeight ?? null) !== null;
 
     if (!confirmed) throw new Error("Transaction is not confirmed");
@@ -54,5 +57,9 @@ export class NimiqRpcPaymentVerifier implements PaymentVerifier {
 function decodeData(value: string): string {
   if (!value) return "";
   if (value.startsWith("0x")) return Buffer.from(value.slice(2), "hex").toString("utf8");
-  try { return Buffer.from(value, "base64").toString("utf8"); } catch { return value; }
+  if (value.includes(":")) return value;
+  try {
+    const decoded = Buffer.from(value, "base64").toString("utf8");
+    return decoded && /^[\x20-\x7E]+$/.test(decoded) ? decoded : value;
+  } catch { return value; }
 }

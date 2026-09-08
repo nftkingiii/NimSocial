@@ -124,12 +124,13 @@ export class PostgresStore implements Store {
   }
   async createPost(p: Post) {
     await this.pool.query(
-      "INSERT INTO posts(id,author_wallet,kind,body,job_id,state,payment_reference,required_luna,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+      "INSERT INTO posts(id,author_wallet,kind,body,attachments,job_id,state,payment_reference,required_luna,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
       [
         p.id,
         p.authorWallet,
         p.kind,
         p.body,
+        JSON.stringify(p.attachments),
         p.jobId,
         p.state,
         p.paymentReference,
@@ -400,6 +401,7 @@ function postFrom(r: QueryResultRow): Post {
     authorWallet: r.author_wallet,
     kind: r.kind,
     body: r.body,
+    attachments: Array.isArray(r.attachments) ? r.attachments : [],
     jobId: r.job_id,
     state: r.state,
     paymentReference: r.payment_reference,

@@ -3,6 +3,7 @@ import type {
   DirectMessage,
   FeedPost,
   PaymentIntent,
+  PostAttachment,
   PostEngagement,
   PostKind,
   PostReply,
@@ -81,6 +82,7 @@ export async function createPostIntent(input: {
   kind: PostKind;
   body: string;
   jobId?: string;
+  attachments?: PostAttachment[];
 }): Promise<PaymentIntent> {
   return request<PaymentIntent>("/v1/posts/intents", {
     method: "POST",

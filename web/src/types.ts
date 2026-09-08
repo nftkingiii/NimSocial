@@ -1,5 +1,13 @@
 export type PostKind = "request" | "service" | "update" | "proof";
 
+export interface PostAttachment {
+  kind: "media" | "evidence";
+  name: string;
+  mimeType: "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
+  dataUrl: string;
+  size: number;
+}
+
 export interface FeedPost {
   id: string;
   authorWallet: string;
@@ -7,6 +15,7 @@ export interface FeedPost {
   authorRole?: string;
   kind: PostKind;
   body: string;
+  attachments?: PostAttachment[];
   jobId: string | null;
   requiredLuna: string;
   paymentTxHash: string | null;
